@@ -1,0 +1,6 @@
+dyn StdError: Send
+Box<(dyn StdError + 'static)>
+Unique<dyn StdError>
+Box<dyn StdError>
+Box<dyn StdError + Send + Sync>
+From<Box<dyn StdError>>

@@ -1,6 +1,6 @@
 use crate::Hash32;
 use serde::{Deserialize, Serialize};
-use ed25519_dalek::{Signature, VerifyingKey, Verifier as _};
+use ed25519_dalek::{VerifyingKey, Verifier as _, Signature};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Operation {

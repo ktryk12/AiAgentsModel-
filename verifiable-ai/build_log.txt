@@ -1,143 +1,81 @@
-    Checking vdb v0.1.0 (E:\repos\AiAgentsModel-\verifiable-ai\crates\vdb)
-warning: unused import: `Signature`
-  --> crates\vdb\src\lib.rs:20:47
-   |
-20 | use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Signer as _};
-   |                                               ^^^^^^^^^
-   |
-   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
-
-error[E0277]: the trait bound `[u8; 64]: serde::Serialize` is not satisfied
-    --> crates\vdb\src\types.rs:55:24
-     |
-  55 | #[derive(Clone, Debug, Serialize, Deserialize)]
-     |                        ^^^^^^^^^ the trait `Serialize` is not implemented for `[u8; 64]`
-...
-  60 |     pub signature: [u8; 64],
-     |     --- required by a bound introduced by this call
-     |
-     = note: for local types consider adding `#[derive(serde::Serialize)]` to your `[u8; 64]` type
-     = note: for types from other crates check whether the crate offers a `serde` feature flag
-     = help: the following other types implement trait `Serialize`:
-               [T; 0]
-               [T]
-               [T; 1]
-               [T; 2]
-               [T; 3]
-               [T; 4]
-               [T; 5]
-               [T; 6]
-             and 26 others
-note: required by a bound in `types::_::_serde::ser::SerializeStruct::serialize_field`
-    --> C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_core-1.0.228\src\ser\mod.rs:1917:21
-     |
-1915 |     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
-     |        --------------- required by a bound in this associated function
-1916 |     where
-1917 |         T: ?Sized + Serialize;
-     |                     ^^^^^^^^^ required by this bound in `SerializeStruct::serialize_field`
-     = note: this error originates in the derive macro `Serialize` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0277]: the trait bound `[u8; 64]: serde::Deserialize<'de>` is not satisfied
-    --> crates\vdb\src\types.rs:60:20
-     |
-  60 |     pub signature: [u8; 64],
-     |                    ^^^^^^^^ the trait `Deserialize<'_>` is not implemented for `[u8; 64]`
-     |
-     = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `[u8; 64]` type
-     = note: for types from other crates check whether the crate offers a `serde` feature flag
-     = help: the following other types implement trait `Deserialize<'de>`:
-               &[u8]
-               [T; 0]
-               [T; 1]
-               [T; 2]
-               [T; 3]
-               [T; 4]
-               [T; 5]
-               [T; 6]
-             and 26 others
-note: required by a bound in `next_element`
-    --> C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_core-1.0.228\src\de\mod.rs:1771:12
-     |
-1769 |     fn next_element<T>(&mut self) -> Result<Option<T>, Self::Error>
-     |        ------------ required by a bound in this associated function
-1770 |     where
-1771 |         T: Deserialize<'de>,
-     |            ^^^^^^^^^^^^^^^^ required by this bound in `SeqAccess::next_element`
-
-error[E0277]: the trait bound `[u8; 64]: serde::Deserialize<'de>` is not satisfied
-    --> crates\vdb\src\types.rs:60:20
-     |
-  60 |     pub signature: [u8; 64],
-     |                    ^^^^^^^^ the trait `Deserialize<'_>` is not implemented for `[u8; 64]`
-     |
-     = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `[u8; 64]` type
-     = note: for types from other crates check whether the crate offers a `serde` feature flag
-     = help: the following other types implement trait `Deserialize<'de>`:
-               &[u8]
-               [T; 0]
-               [T; 1]
-               [T; 2]
-               [T; 3]
-               [T; 4]
-               [T; 5]
-               [T; 6]
-             and 26 others
-note: required by a bound in `next_value`
-    --> C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_core-1.0.228\src\de\mod.rs:1916:12
-     |
-1914 |     fn next_value<V>(&mut self) -> Result<V, Self::Error>
-     |        ---------- required by a bound in this associated function
-1915 |     where
-1916 |         V: Deserialize<'de>,
-     |            ^^^^^^^^^^^^^^^^ required by this bound in `MapAccess::next_value`
-
-error[E0277]: the trait bound `[u8; 64]: serde::Deserialize<'de>` is not satisfied
-  --> crates\vdb\src\types.rs:55:35
-   |
-55 | #[derive(Clone, Debug, Serialize, Deserialize)]
-   |                                   ^^^^^^^^^^^ the trait `Deserialize<'_>` is not implemented for `[u8; 64]`
-   |
-   = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `[u8; 64]` type
-   = note: for types from other crates check whether the crate offers a `serde` feature flag
-   = help: the following other types implement trait `Deserialize<'de>`:
-             &[u8]
-             [T; 0]
-             [T; 1]
-             [T; 2]
-             [T; 3]
-             [T; 4]
-             [T; 5]
-             [T; 6]
-           and 26 others
-note: required by a bound in `types::_::_serde::__private228::de::missing_field`
-  --> C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\de.rs:26:8
-   |
-24 | pub fn missing_field<'de, V, E>(field: &'static str) -> Result<V, E>
-   |        ------------- required by a bound in this function
-25 | where
-26 |     V: Deserialize<'de>,
-   |        ^^^^^^^^^^^^^^^^ required by this bound in `missing_field`
-   = note: this error originates in the derive macro `Deserialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+warning: unused import: `Verifier as _`
+ --> crates\vdb\src\events.rs:3:35
+  |
+3 | ...y, Verifier as _, S...
+  |       ^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
 
 warning: variable does not need to be mutable
-   --> crates\vdb\src\lib.rs:211:13
+   --> crates\vdb\src\lib.rs:209:13
     |
-211 |         let mut prepared_ops: Vec<([u8; 32], [u8; 32])> = Vec::with_capacity(ops.len());
-    |             ----^^^^^^^^^^^^
-    |             |
-    |             help: remove this `mut`
+209 | ...et mut prepared_ops: V...
+    |       ----^^^^^^^^^^^^
+    |       |
+    |       help: remove this `mut`
     |
     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
 
 warning: unused variable: `prepared_ops`
-   --> crates\vdb\src\lib.rs:211:13
+   --> crates\vdb\src\lib.rs:209:13
     |
-211 |         let mut prepared_ops: Vec<([u8; 32], [u8; 32])> = Vec::with_capacity(ops.len());
-    |             ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_prepared_ops`
+209 | ...et mut prepared_ops: V...
+    |       ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_prepared_ops`
     |
     = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
 
-For more information about this error, try `rustc --explain E0277`.
-warning: `vdb` (lib) generated 3 warnings
-error: could not compile `vdb` (lib) due to 4 previous errors; 3 warnings emitted
+warning: `vdb` (lib) generated 3 warnings (run `cargo fix --lib -p vdb` to apply 3 suggestions)
+warning: unused imports: `Deserialize` and `Serialize`
+ --> crates\modelops\src\inventory.rs:3:13
+  |
+3 | ...::{Serialize, Deserialize};
+  |       ^^^^^^^^^  ^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `modelops` (lib) generated 1 warning (run `cargo fix --lib -p modelops` to apply 1 suggestion)
+   Compiling orchestrator v0.1.0 (E:\repos\AiAgentsModel-\verifiable-ai\services\orchestrator)
+warning: unused import: `JobPhase`
+ --> services\orchestrator\src\state.rs:7:20
+  |
+7 | use crate::types::{JobPhase, JobStatus};
+  |                    ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `crate::state::AppState`
+ --> services\orchestrator\src\routes_models.rs:2:5
+  |
+2 | use crate::state::AppState;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `anyhow::Context`
+ --> services\orchestrator\src\provider_lmstudio.rs:2:5
+  |
+2 | use anyhow::Context;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::state::AppState`
+ --> services\orchestrator\src\routes_training.rs:6:5
+  |
+6 | use crate::state::AppState;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `QualityReport`
+ --> services\orchestrator\src\routes_training.rs:7:44
+  |
+7 | use crate::types_training::{DatasetRecord, QualityReport};
+  |                                            ^^^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+  --> services\orchestrator\src\main.rs:73:9
+   |
+73 |     let mut job = JobStatus {
+   |         ----^^^
+   |         |
+   |         help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: `orchestrator` (bin "orchestrator") generated 6 warnings (run `cargo fix --bin "orchestrator" -p orchestrator` to apply 6 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.27s

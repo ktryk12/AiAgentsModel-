@@ -27,11 +27,9 @@ pub struct ModelRecord {
 }
 
 /// Deterministic VDB key: model:<repo_id>@<revision_or_latest>
-/// Repo_id kan indeholde '/' så vi normaliserer key: replace '/' -> '__'
+/// Uses urlencoding to handle special characters in repo_id and revision.
 pub fn model_key(repo_id: &str, revision: Option<&str>) -> Vec<u8> {
-    let mut k = String::from("model:");
-    k.push_str(&repo_id.replace('/', "__"));
-    k.push('@');
-    k.push_str(revision.unwrap_or("latest"));
-    k.into_bytes()
+    let r = urlencoding::encode(repo_id);
+    let v = urlencoding::encode(revision.unwrap_or("latest"));
+    format!("model:{}@{}", r, v).into_bytes()
 }

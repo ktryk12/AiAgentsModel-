@@ -1,0 +1,5 @@
+dyn StdError: Sized
+Box<(dyn StdError + 'static)>
+Box<dyn StdError>
+Box<dyn StdError + Send + Sync>
+From<Box<dyn StdError>>

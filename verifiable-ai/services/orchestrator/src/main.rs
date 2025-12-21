@@ -1,27 +1,60 @@
-mod types;
+pub mod types;
 mod worker;
 mod state;
+mod routes_models;
+mod vdb_exec;
+pub mod provider;
+mod provider_lmstudio;
+pub mod runtime;
+pub mod runtime_reload;
+pub mod types_training;
+pub mod training_store;
+pub mod dataset_validator;
+pub mod routes_training;
+mod routes_runtime;
+mod routes_chat;
 
 use axum::{routing::{get, post}, Json, Router, extract::{Path, State}, http::StatusCode};
 use tower_http::cors::CorsLayer;
 use uuid::Uuid;
+use tokio::sync::Mutex;
+use std::sync::Arc;
 
 use types::*;
 use worker::*;
 use state::*;
+use routes_models::*;
+use vdb_exec::with_vdb_blocking;
 
 use tokio::{io::{AsyncBufReadExt, BufReader}, process::Command};
+use std::path::PathBuf;
 
-use vdb::{InMemoryStorage, VerifiableKV};
-use modelops::{ModelFile, ModelRecord, ModelStatus, manifest_hash, put_model};
+use modelops::{ModelFile, ModelRecord, ModelStatus, manifest_hash, put_model, add_model_to_index};
 
 #[tokio::main]
 async fn main() {
-    let app_state = AppState::new();
+    let db_path = PathBuf::from("orchestrator_vdb.json");
+    
+    // Init provider & runtime
+    let provider = crate::provider_lmstudio::LmStudioProvider::new("http://127.0.0.1:1234".to_string());
+    let runtime = crate::runtime::ModelRuntimeManager::new(Box::new(provider));
+    let runtime_arc = Arc::new(Mutex::new(runtime));
+
+    let app_state = Arc::new(AppState::new(db_path, runtime_arc));
+
+    // Spawn background reloader
+    tokio::spawn(crate::runtime_reload::reload_from_vdb(app_state.clone()));
 
     let app = Router::new()
         .route("/models/download", post(download_model))
         .route("/models/jobs/:id", get(get_job))
+        .route("/models", get(get_models))
+        .route("/models/use", post(post_use_model))
+        .route("/models/active", get(get_active))
+        .route("/runtime", get(crate::routes_runtime::get_runtime))
+        .route("/chat/completions", post(crate::routes_chat::chat_complete))
+        .route("/training/datasets", post(crate::routes_training::post_dataset))
+        .route("/training/datasets", get(crate::routes_training::get_datasets))
         .layer(CorsLayer::permissive())
         .with_state(app_state);
 
@@ -72,8 +105,13 @@ async fn run_worker_job(st: SharedState, job_id: Uuid, req: DownloadRequest) {
     let allow_patterns = req.allow_patterns.as_ref().map(|v| v.join(","));
     let ignore_patterns = req.ignore_patterns.as_ref().map(|v| v.join(","));
 
-    let mut cmd = Command::new("python");
-    cmd.arg("workers/hf_downloader.py")
+    // Resolve absolute path to worker script
+    let script_path = std::env::current_dir()
+        .unwrap_or_else(|_| PathBuf::from("."))
+        .join("workers/hf_downloader.py");
+        
+    let mut cmd = Command::new("python.exe");
+    cmd.arg(script_path)
         .arg("--repo_id").arg(&req.repo_id);
 
     if let Some(rev) = &req.revision {
@@ -176,10 +214,6 @@ async fn run_worker_job(st: SharedState, job_id: Uuid, req: DownloadRequest) {
         j.message = Some("writing ModelRecord to VDB".into());
     }).await;
 
-    // V1: bruger InMemoryStorage. Senere: RocksDB backend.
-    let storage = InMemoryStorage::new();
-    let mut vdb = VerifiableKV::new(storage);
-
     let downloaded_at = now_secs();
     let rec = ModelRecord {
         repo_id: repo_id.clone(),
@@ -191,19 +225,31 @@ async fn run_worker_job(st: SharedState, job_id: Uuid, req: DownloadRequest) {
         status: ModelStatus::Ready,
         error: None,
     };
+    
+    // Use persistent VDB from State
+    let res = with_vdb_blocking(st.vdb.clone(), move |vdb| {
+        // 1. Put model
+        put_model(vdb, &rec).map_err(|e| e.to_string())?;
+        // 2. Update index
+        let key = modelops::model_key(&rec.repo_id, rec.revision.as_deref());
+        add_model_to_index(vdb, &key).map_err(|e| e.to_string())?;
+        Ok::<(), String>(())
+    }).await.expect("vdb task panicked");
 
-    if let Err(e) = put_model(&mut vdb, &rec) {
-        st.update_job(job_id, |j| {
-            j.phase = JobPhase::Failed;
-            j.message = Some(format!("VDB write failed: {e}"));
-        }).await;
-        return;
+    match res {
+        Ok(_) => {
+            st.update_job(job_id, |j| {
+                j.phase = JobPhase::Ready;
+                j.message = Some("ready".into());
+            }).await;
+        }
+        Err(e) => {
+            st.update_job(job_id, |j| {
+                j.phase = JobPhase::Failed;
+                j.message = Some(format!("VDB write failed: {e}"));
+            }).await;
+        }
     }
-
-    st.update_job(job_id, |j| {
-        j.phase = JobPhase::Ready;
-        j.message = Some("ready".into());
-    }).await;
 }
 
 fn now_secs() -> u64 {

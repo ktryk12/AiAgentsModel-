@@ -11,13 +11,13 @@ mod nodestore;
 mod history;
 
 pub use types::{Hash32, WriteReceipt, ReadResult, MerkleProof256, Checkpoint, BatchReceipt, CompressedProof};
-pub use storage::{Storage, InMemoryStorage};
+pub use storage::{Storage, InMemoryStorage, FileBackedStorage};
 pub use nodestore::{NodeStore, InMemoryNodeStore, NodeId};
 pub use history::{StateHistory, RootPoint};
 
 use smt::SparseMerkleTree;
 use events::EventLog;
-use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Signer as _};
+use ed25519_dalek::{SigningKey, VerifyingKey, Signer as _};
 use thiserror::Error;
 use rand_core::OsRng;
 // use events::{LogEntry, Event, BatchWriteEvent}; // Removed to avoid potential conflicts/unused
@@ -87,8 +87,7 @@ impl<S: Storage, N: NodeStore> VerifiableKV<S, N> {
         let value_hash = crypto::hash_value(value);
         
         // Store value
-        self.storage.put(key, value)
-            .map_err(|e| VdbError::Storage(e.to_string()))?;
+        self.storage.set(key, value);
         
         // Update SMT
         self.smt.update(key_hash, value_hash);
@@ -149,8 +148,7 @@ impl<S: Storage, N: NodeStore> VerifiableKV<S, N> {
         let empty_hash = crypto::empty_value_hash(); // Empty value
         
         // Remove from storage
-        self.storage.delete(key)
-            .map_err(|e| VdbError::Storage(e.to_string()))?;
+        self.storage.delete(key);
         
         // Update SMT (set to empty)
         self.smt.update(key_hash, empty_hash);
@@ -240,8 +238,7 @@ impl<S: Storage, N: NodeStore> VerifiableKV<S, N> {
         
         for op in &full_ops {
             // Store value
-            self.storage.put(op.key, op.value)
-                .map_err(|e| VdbError::Storage(e.to_string()))?;
+            self.storage.set(op.key, op.value);
             
             // Update SMT
             self.smt.update(op.key_hash, op.value_hash);
@@ -307,8 +304,7 @@ impl<S: Storage, N: NodeStore> VerifiableKV<S, N> {
         let key_hash = crypto::hash_key(key);
         
         // Try to fetch from storage
-        let value = self.storage.get(key)
-            .map_err(|e| VdbError::Storage(e.to_string()))?;
+        let value = self.storage.get(key);
         
         let proof = self.smt.prove(key_hash);
         

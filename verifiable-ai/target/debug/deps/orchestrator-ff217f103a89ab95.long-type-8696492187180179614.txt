@@ -1,0 +1,2 @@
+tokio::sync::RwLock<HashMap<Uuid, types::JobStatus>>
+tokio::sync::RwLock<HashMap<Uuid, types::JobStatus>>: Clone

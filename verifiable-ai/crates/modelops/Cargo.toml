@@ -12,3 +12,4 @@ thiserror = { workspace = true }
 hex = { workspace = true }
 
 vdb = { path = "../vdb" }
+urlencoding = "2.1"
