@@ -2,13 +2,10 @@
 members = [
   "crates/vdb",
   "crates/claims",
-  "crates/agents",
-  "crates/decision",
   "crates/modelops",
   "services/orchestrator",
   "examples/mvp-demo",
   "examples/claim-demo",
-  "examples/decision-demo",
 ]
 resolver = "2"
 
