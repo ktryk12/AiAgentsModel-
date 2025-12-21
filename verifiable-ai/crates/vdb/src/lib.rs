@@ -297,7 +297,7 @@ impl<S: Storage, N: NodeStore> VerifiableKV<S, N> {
             state_root: new_root,
             latest_event_hash: event_hash,
             batch_hash,
-            signature: signature_bytes,
+            signature: signature_bytes.to_vec(),
             op_count: full_ops.len() as u32,
         })
     }

@@ -57,7 +57,7 @@ pub struct BatchReceipt {
     pub state_root: Hash32,
     pub latest_event_hash: Hash32,
     pub batch_hash: Hash32,
-    pub signature: [u8; 64],
+    pub signature: Vec<u8>,
     pub op_count: u32,
 }
 
