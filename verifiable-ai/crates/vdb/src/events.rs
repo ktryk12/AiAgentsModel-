@@ -91,7 +91,8 @@ impl EventLog {
                 Ok(s) => s,
                 Err(_) => return false,
             };
-            if vk.verify(&event_bytes, &sig).is_err() {
+            // Use verify_strict for Ed25519 standard compliance (no malleability)
+            if vk.verify_strict(&event_bytes, &sig).is_err() {
                 return false;
             }
 

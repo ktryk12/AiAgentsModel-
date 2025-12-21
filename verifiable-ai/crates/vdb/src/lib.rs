@@ -374,6 +374,11 @@ impl<S: Storage, N: NodeStore> VerifiableKV<S, N> {
             }
         }
     }
+
+    #[doc(hidden)]
+    pub fn history_root_by_event_for_test(&self, event_hash: Hash32) -> Option<Hash32> {
+        self.history.root_by_event(event_hash)
+    }
     
     // ---------------- Proof Compression Helpers ---------------- //
     

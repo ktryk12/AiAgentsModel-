@@ -236,6 +236,34 @@ fn test_batch_set() {
 }
 
 #[test]
+fn test_root_history_by_event() {
+    let storage = InMemoryStorage::new();
+    let mut db = VerifiableKV::new(storage);
+
+    let r1 = db.set(b"a", b"1").unwrap();
+    let p1 = db.get(b"a").unwrap(); // proof against current root at that time
+
+    let _r2 = db.set(b"a", b"2").unwrap();
+
+    // verify p1 against root at event r1.event_hash
+    let root1 = db.history_root_by_event_for_test(r1.event_hash).unwrap();
+    assert!(VerifiableKV::<InMemoryStorage>::verify_proof(
+        &p1.proof,
+        b"a",
+        Some(b"1"),
+        root1,
+    ));
+
+    // should fail against newer root (since value changed)
+    assert!(!VerifiableKV::<InMemoryStorage>::verify_proof(
+        &p1.proof,
+        b"a",
+        Some(b"1"),
+        db.state_root(),
+    ));
+}
+
+#[test]
 fn test_proof_compression_roundtrip() {
     let storage = InMemoryStorage::new();
     let mut db = VerifiableKV::new(storage);
