@@ -1,0 +1,696 @@
+warning: unused import: `Verifier as _`
+ --> crates\vdb\src\events.rs:3:35
+  |
+3 | ...y, Verifier as _, S...
+  |       ^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates\vdb\src\lib.rs:209:13
+    |
+209 | ...et mut prepared_ops: V...
+    |       ----^^^^^^^^^^^^
+    |       |
+    |       help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `prepared_ops`
+   --> crates\vdb\src\lib.rs:209:13
+    |
+209 | ...et mut prepared_ops: V...
+    |       ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_prepared_ops`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vdb` (lib) generated 3 warnings (run `cargo fix --lib -p vdb` to apply 3 suggestions)
+warning: unused imports: `Deserialize` and `Serialize`
+ --> crates\modelops\src\inventory.rs:3:13
+  |
+3 | ...::{Serialize, Deserialize};
+  |       ^^^^^^^^^  ^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `modelops` (lib) generated 1 warning (run `cargo fix --lib -p modelops` to apply 1 suggestion)
+    Checking orchestrator v0.1.0 (E:\repos\AiAgentsModel-\verifiable-ai\services\orchestrator)
+warning: unused import: `JobPhase`
+ --> services\orchestrator\src\state.rs:7:20
+  |
+7 | use crate::types::{JobPhase, JobStatus};
+  |                    ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `crate::state::AppState`
+ --> services\orchestrator\src\routes_models.rs:2:5
+  |
+2 | use crate::state::AppState;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `anyhow::Context`
+ --> services\orchestrator\src\provider_lmstudio.rs:2:5
+  |
+2 | use anyhow::Context;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `Path`
+ --> services\orchestrator\src\orchestrator_job.rs:1:17
+  |
+1 | use std::path::{Path, PathBuf};
+  |                 ^^^^
+
+warning: unused import: `crate::state::AppState`
+ --> services\orchestrator\src\routes_training.rs:6:5
+  |
+6 | use crate::state::AppState;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `QualityReport`
+ --> services\orchestrator\src\routes_training.rs:7:44
+  |
+7 | use crate::types_training::{DatasetRecord, QualityReport};
+  |                                            ^^^^^^^^^^^^^
+
+warning: unused import: `Serialize`
+ --> services\orchestrator\src\routes_jobs.rs:2:26
+  |
+2 | use serde::{Deserialize, Serialize};
+  |                          ^^^^^^^^^
+
+warning: unused import: `std::sync::Arc`
+ --> services\orchestrator\src\routes_jobs.rs:5:5
+  |
+5 | use std::sync::Arc;
+  |     ^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> services\orchestrator\src\orchestrator_job.rs:30:28
+   |
+30 |         let bytes = db.get(&key).map_err(|e| e.to_string())?.ok_or("job not found")?;
+   |                        --- ^^^^ expected `&[u8]`, found `&String`
+   |                        |
+   |                        arguments to this method are incorrect
+   |
+   = note: expected reference `&[u8]`
+              found reference `&std::string::String`
+note: method defined here
+  --> E:\repos\AiAgentsModel-\verifiable-ai\crates\vdb\src\storage.rs:10:8
+   |
+10 |     fn get(&self, key: &[u8]) -> Option<Vec<u8>>;
+   |        ^^^
+
+error[E0599]: no method named `map_err` found for enum `std::option::Option<T>` in the current scope
+  --> services\orchestrator\src\orchestrator_job.rs:30:34
+   |
+30 |         let bytes = db.get(&key).map_err(|e| e.to_string())?.ok_or("job not found")?;
+   |                                  ^^^^^^^
+   |
+help: there is a method `map_or` with a similar name, but with different arguments
+  --> /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234\library\core\src\option.rs:1223:5
+
+error[E0282]: type annotations needed
+  --> services\orchestrator\src\orchestrator_job.rs:30:43
+   |
+30 |         let bytes = db.get(&key).map_err(|e| e.to_string())?.ok_or("job not found")?;
+   |                                           ^  - type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type
+   |
+30 |         let bytes = db.get(&key).map_err(|e: /* Type */| e.to_string())?.ok_or("job not found")?;
+   |                                            ++++++++++++
+
+error[E0308]: mismatched types
+  --> services\orchestrator\src\orchestrator_job.rs:55:24
+   |
+55 |                 db.set(&key, &bytes).map_err(|e| e.to_string())
+   |                    --- ^^^^ expected `&[u8]`, found `&String`
+   |                    |
+   |                    arguments to this method are incorrect
+   |
+   = note: expected reference `&[u8]`
+              found reference `&std::string::String`
+note: method defined here
+  --> E:\repos\AiAgentsModel-\verifiable-ai\crates\vdb\src\storage.rs:11:8
+   |
+11 |     fn set(&mut self, key: &[u8], value: &[u8]);
+   |        ^^^
+
+error[E0599]: no method named `map_err` found for unit type `()` in the current scope
+  --> services\orchestrator\src\orchestrator_job.rs:55:38
+   |
+55 |                 db.set(&key, &bytes).map_err(|e| e.to_string())
+   |                                      ^^^^^^^ method not found in `()`
+   |
+note: method `set` modifies its receiver in-place
+  --> services\orchestrator\src\orchestrator_job.rs:55:20
+   |
+55 |                 db.set(&key, &bytes).map_err(|e| e.to_string())
+   |                    ^^^ this call modifies `db` in-place
+
+error[E0282]: type annotations needed
+  --> services\orchestrator\src\orchestrator_job.rs:55:47
+   |
+55 |                 db.set(&key, &bytes).map_err(|e| e.to_string())
+   |                                               ^  - type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type
+   |
+55 |                 db.set(&key, &bytes).map_err(|e: /* Type */| e.to_string())
+   |                                                ++++++++++++
+
+error[E0282]: type annotations needed
+  --> services\orchestrator\src\orchestrator_job.rs:52:13
+   |
+52 | /             with_vdb_blocking(vdb, move |db| {
+53 | |                 let key = key_job(j_clone.job_id);
+54 | |                 let bytes = serde_json::to_vec(&j_clone).map_err(|e| e.to_string())?;
+55 | |                 db.set(&key, &bytes).map_err(|e| e.to_string())
+56 | |             }).await.map_err(|e| e.to_string())?
+   | |____________________^ cannot infer type
+
+error[E0282]: type annotations needed
+  --> services\orchestrator\src\orchestrator_job.rs:56:31
+   |
+56 |             }).await.map_err(|e| e.to_string())?
+   |                               ^  - type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type
+   |
+56 |             }).await.map_err(|e: /* Type */| e.to_string())?
+   |                                ++++++++++++
+
+error[E0308]: mismatched types
+   --> services\orchestrator\src\orchestrator_job.rs:132:24
+    |
+132 |                 if let Ok(Some(ds_bytes)) = db.get(&ds_key) {
+    |                        ^^^^^^^^^^^^^^^^^^   --------------- this expression has type `std::option::Option<Vec<u8>>`
+    |                        |
+    |                        expected `Option<Vec<u8>>`, found `Result<_, _>`
+    |
+    = note: expected enum `std::option::Option<Vec<u8>>`
+               found enum `Result<_, _>`
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+   --> services\orchestrator\src\orchestrator_job.rs:132:27
+    |
+132 |                 if let Ok(Some(ds_bytes)) = db.get(&ds_key) {
+    |                           ^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+    |
+    = help: the trait `Sized` is not implemented for `[u8]`
+note: required by a bound in `std::prelude::v1::Some`
+   --> /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234\library\core\src\option.rs:607:5
+
+error[E0308]: mismatched types
+   --> services\orchestrator\src\orchestrator_job.rs:136:43
+    |
+136 |                         let _ = db.delete(&lock_key);
+    |                                    ------ ^^^^^^^^^ expected `&[u8]`, found `&String`
+    |                                    |
+    |                                    arguments to this method are incorrect
+    |
+    = note: expected reference `&[u8]`
+               found reference `&std::string::String`
+note: method defined here
+   --> E:\repos\AiAgentsModel-\verifiable-ai\crates\vdb\src\storage.rs:12:8
+    |
+ 12 |     fn delete(&mut self, key: &[u8]);
+    |        ^^^^^^
+
+error[E0282]: type annotations needed
+   --> services\orchestrator\src\orchestrator_job.rs:155:14
+    |
+155 |              persist_job(&current_job).await.ok(); // best effort
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error[E0308]: mismatched types
+   --> services\orchestrator\src\orchestrator_job.rs:161:24
+    |
+161 |                 if let Ok(Some(ds_bytes)) = db.get(&ds_key) {
+    |                        ^^^^^^^^^^^^^^^^^^   --------------- this expression has type `std::option::Option<Vec<u8>>`
+    |                        |
+    |                        expected `Option<Vec<u8>>`, found `Result<_, _>`
+    |
+    = note: expected enum `std::option::Option<Vec<u8>>`
+               found enum `Result<_, _>`
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+   --> services\orchestrator\src\orchestrator_job.rs:161:27
+    |
+161 |                 if let Ok(Some(ds_bytes)) = db.get(&ds_key) {
+    |                           ^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+    |
+    = help: the trait `Sized` is not implemented for `[u8]`
+note: required by a bound in `std::prelude::v1::Some`
+   --> /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234\library\core\src\option.rs:607:5
+
+error[E0308]: mismatched types
+   --> services\orchestrator\src\orchestrator_job.rs:165:43
+    |
+165 |                         let _ = db.delete(&lock_key);
+    |                                    ------ ^^^^^^^^^ expected `&[u8]`, found `&String`
+    |                                    |
+    |                                    arguments to this method are incorrect
+    |
+    = note: expected reference `&[u8]`
+               found reference `&std::string::String`
+note: method defined here
+   --> E:\repos\AiAgentsModel-\verifiable-ai\crates\vdb\src\storage.rs:12:8
+    |
+ 12 |     fn delete(&mut self, key: &[u8]);
+    |        ^^^^^^
+
+error[E0308]: mismatched types
+   --> services\orchestrator\src\orchestrator_job.rs:186:32
+    |
+186 |         let idx_bytes = db.get(idx_key).map_err(|e| e.to_string())?;
+    |                            --- ^^^^^^^ expected `&[u8]`, found `&str`
+    |                            |
+    |                            arguments to this method are incorrect
+    |
+    = note: expected reference `&[u8]`
+               found reference `&str`
+note: method defined here
+   --> E:\repos\AiAgentsModel-\verifiable-ai\crates\vdb\src\storage.rs:10:8
+    |
+ 10 |     fn get(&self, key: &[u8]) -> Option<Vec<u8>>;
+    |        ^^^
+
+error[E0599]: no method named `map_err` found for enum `std::option::Option<T>` in the current scope
+   --> services\orchestrator\src\orchestrator_job.rs:186:41
+    |
+186 |         let idx_bytes = db.get(idx_key).map_err(|e| e.to_string())?;
+    |                                         ^^^^^^^
+    |
+help: there is a method `map_or` with a similar name, but with different arguments
+   --> /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234\library\core\src\option.rs:1223:5
+
+error[E0282]: type annotations needed
+   --> services\orchestrator\src\orchestrator_job.rs:186:50
+    |
+186 |         let idx_bytes = db.get(idx_key).map_err(|e| e.to_string())?;
+    |                                                  ^  - type must be known at this point
+    |
+help: consider giving this closure parameter an explicit type
+    |
+186 |         let idx_bytes = db.get(idx_key).map_err(|e: /* Type */| e.to_string())?;
+    |                                                   ++++++++++++
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+   --> services\orchestrator\src\orchestrator_job.rs:187:40
+    |
+187 |         let keys: Vec<String> = if let Some(b) = idx_bytes {
+    |                                        ^^^^^^^ doesn't have a size known at compile-time
+    |
+    = help: the trait `Sized` is not implemented for `[u8]`
+note: required by a bound in `std::prelude::v1::Some`
+   --> /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234\library\core\src\option.rs:607:5
+
+error[E0308]: mismatched types
+   --> services\orchestrator\src\orchestrator_job.rs:194:45
+    |
+194 |             if let Ok(Some(bytes)) = db.get(&key) {
+    |                                         --- ^^^^ expected `&[u8]`, found `&String`
+    |                                         |
+    |                                         arguments to this method are incorrect
+    |
+    = note: expected reference `&[u8]`
+               found reference `&std::string::String`
+note: method defined here
+   --> E:\repos\AiAgentsModel-\verifiable-ai\crates\vdb\src\storage.rs:10:8
+    |
+ 10 |     fn get(&self, key: &[u8]) -> Option<Vec<u8>>;
+    |        ^^^
+
+error[E0308]: mismatched types
+   --> services\orchestrator\src\orchestrator_job.rs:194:20
+    |
+194 |             if let Ok(Some(bytes)) = db.get(&key) {
+    |                    ^^^^^^^^^^^^^^^   ------------ this expression has type `std::option::Option<Vec<u8>>`
+    |                    |
+    |                    expected `Option<Vec<u8>>`, found `Result<_, _>`
+    |
+    = note: expected enum `std::option::Option<Vec<u8>>`
+               found enum `Result<_, _>`
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+   --> services\orchestrator\src\orchestrator_job.rs:194:23
+    |
+194 |             if let Ok(Some(bytes)) = db.get(&key) {
+    |                       ^^^^^^^^^^^ doesn't have a size known at compile-time
+    |
+    = help: the trait `Sized` is not implemented for `[u8]`
+note: required by a bound in `std::prelude::v1::Some`
+   --> /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234\library\core\src\option.rs:607:5
+
+error[E0308]: mismatched types
+   --> services\orchestrator\src\orchestrator_job.rs:204:32
+    |
+204 |                         db.set(&key, &new_bytes).map_err(|e| e.to_string())?;
+    |                            --- ^^^^ expected `&[u8]`, found `&String`
+    |                            |
+    |                            arguments to this method are incorrect
+    |
+    = note: expected reference `&[u8]`
+               found reference `&std::string::String`
+note: method defined here
+   --> E:\repos\AiAgentsModel-\verifiable-ai\crates\vdb\src\storage.rs:11:8
+    |
+ 11 |     fn set(&mut self, key: &[u8], value: &[u8]);
+    |        ^^^
+
+error[E0599]: no method named `map_err` found for unit type `()` in the current scope
+   --> services\orchestrator\src\orchestrator_job.rs:204:50
+    |
+204 |                         db.set(&key, &new_bytes).map_err(|e| e.to_string())?;
+    |                                                  ^^^^^^^ method not found in `()`
+    |
+note: method `set` modifies its receiver in-place
+   --> services\orchestrator\src\orchestrator_job.rs:204:28
+    |
+204 |                         db.set(&key, &new_bytes).map_err(|e| e.to_string())?;
+    |                            ^^^ this call modifies `db` in-place
+
+error[E0282]: type annotations needed
+   --> services\orchestrator\src\orchestrator_job.rs:204:59
+    |
+204 |                         db.set(&key, &new_bytes).map_err(|e| e.to_string())?;
+    |                                                           ^  - type must be known at this point
+    |
+help: consider giving this closure parameter an explicit type
+    |
+204 |                         db.set(&key, &new_bytes).map_err(|e: /* Type */| e.to_string())?;
+    |                                                            ++++++++++++
+
+error[E0308]: mismatched types
+   --> services\orchestrator\src\orchestrator_job.rs:209:32
+    |
+209 |                         if let Ok(Some(ds_bytes)) = db.get(&ds_key) {
+    |                                ^^^^^^^^^^^^^^^^^^   --------------- this expression has type `std::option::Option<Vec<u8>>`
+    |                                |
+    |                                expected `Option<Vec<u8>>`, found `Result<_, _>`
+    |
+    = note: expected enum `std::option::Option<Vec<u8>>`
+               found enum `Result<_, _>`
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+   --> services\orchestrator\src\orchestrator_job.rs:209:35
+    |
+209 |                         if let Ok(Some(ds_bytes)) = db.get(&ds_key) {
+    |                                   ^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+    |
+    = help: the trait `Sized` is not implemented for `[u8]`
+note: required by a bound in `std::prelude::v1::Some`
+   --> /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234\library\core\src\option.rs:607:5
+
+error[E0308]: mismatched types
+   --> services\orchestrator\src\orchestrator_job.rs:213:52
+    |
+213 | ...                   let _ = db.delete(&lock_key);
+    |                                  ------ ^^^^^^^^^ expected `&[u8]`, found `&String`
+    |                                  |
+    |                                  arguments to this method are incorrect
+    |
+    = note: expected reference `&[u8]`
+               found reference `&std::string::String`
+note: method defined here
+   --> E:\repos\AiAgentsModel-\verifiable-ai\crates\vdb\src\storage.rs:12:8
+    |
+ 12 |     fn delete(&mut self, key: &[u8]);
+    |        ^^^^^^
+
+error[E0599]: no method named `ok_or` found for struct `ReadResult` in the current scope
+  --> services\orchestrator\src\routes_jobs.rs:34:14
+   |
+33 |           let ds_bytes = db.get(&ds_key).map_err(|e| e.to_string())?
+   |  ________________________-
+34 | |             .ok_or(format!("dataset {} not found", req.dataset_id))?;
+   | |             -^^^^^ method not found in `ReadResult`
+   | |_____________|
+   |
+   |
+help: one of the expressions' fields has a method of the same name
+   |
+34 |             .value.ok_or(format!("dataset {} not found", req.dataset_id))?;
+   |              ++++++
+
+error[E0308]: mismatched types
+   --> services\orchestrator\src\routes_jobs.rs:44:19
+    |
+ 44 |         if db.get(&lock_key).map_err(|e| e.to_string())?.is_some() {
+    |               --- ^^^^^^^^^ expected `&[u8]`, found `&String`
+    |               |
+    |               arguments to this method are incorrect
+    |
+    = note: expected reference `&[u8]`
+               found reference `&std::string::String`
+note: method defined here
+   --> E:\repos\AiAgentsModel-\verifiable-ai\crates\vdb\src\lib.rs:303:12
+    |
+303 |     pub fn get(&self, key: &[u8]) -> Result<ReadResult> {
+    |            ^^^
+
+error[E0599]: no method named `is_some` found for struct `ReadResult` in the current scope
+  --> services\orchestrator\src\routes_jobs.rs:44:58
+   |
+44 |         if db.get(&lock_key).map_err(|e| e.to_string())?.is_some() {
+   |                                                          ^^^^^^^ method not found in `ReadResult`
+   |
+help: one of the expressions' fields has a method of the same name
+   |
+44 |         if db.get(&lock_key).map_err(|e| e.to_string())?.value.is_some() {
+   |                                                          ++++++
+
+error[E0308]: mismatched types
+  --> services\orchestrator\src\routes_jobs.rs:69:16
+   |
+69 |         db.set(&key_job(job_id), &job_bytes).map_err(|e| e.to_string())?;
+   |            --- ^^^^^^^^^^^^^^^^ expected `&[u8]`, found `&String`
+   |            |
+   |            arguments to this method are incorrect
+   |
+   = note: expected reference `&[u8]`
+              found reference `&std::string::String`
+note: method defined here
+  --> E:\repos\AiAgentsModel-\verifiable-ai\crates\vdb\src\lib.rs:85:12
+   |
+85 |     pub fn set(&mut self, key: &[u8], value: &[u8]) -> Result<WriteReceipt> {
+   |            ^^^
+
+error[E0308]: mismatched types
+  --> services\orchestrator\src\routes_jobs.rs:71:16
+   |
+71 |         db.set(&lock_key, job_id.as_bytes()).map_err(|e| e.to_string())?;
+   |            --- ^^^^^^^^^ expected `&[u8]`, found `&String`
+   |            |
+   |            arguments to this method are incorrect
+   |
+   = note: expected reference `&[u8]`
+              found reference `&std::string::String`
+note: method defined here
+  --> E:\repos\AiAgentsModel-\verifiable-ai\crates\vdb\src\lib.rs:85:12
+   |
+85 |     pub fn set(&mut self, key: &[u8], value: &[u8]) -> Result<WriteReceipt> {
+   |            ^^^
+
+error[E0308]: mismatched types
+   --> services\orchestrator\src\routes_jobs.rs:75:61
+    |
+ 75 |         let mut keys: Vec<String> = if let Some(b) = db.get(idx_key).map_err(|e| e.to_string())? {
+    |                                                         --- ^^^^^^^ expected `&[u8]`, found `&str`
+    |                                                         |
+    |                                                         arguments to this method are incorrect
+    |
+    = note: expected reference `&[u8]`
+               found reference `&str`
+note: method defined here
+   --> E:\repos\AiAgentsModel-\verifiable-ai\crates\vdb\src\lib.rs:303:12
+    |
+303 |     pub fn get(&self, key: &[u8]) -> Result<ReadResult> {
+    |            ^^^
+
+error[E0308]: mismatched types
+  --> services\orchestrator\src\routes_jobs.rs:75:44
+   |
+75 |         let mut keys: Vec<String> = if let Some(b) = db.get(idx_key).map_err(|e| e.to_string())? {
+   |                                            ^^^^^^^   ------------------------------------------- this expression has type `ReadResult`
+   |                                            |
+   |                                            expected `ReadResult`, found `Option<_>`
+   |
+   = note: expected struct `ReadResult`
+                found enum `std::option::Option<_>`
+help: you might have meant to use field `value` whose type is `std::option::Option<Vec<u8>>`
+   |
+75 |         let mut keys: Vec<String> = if let Some(b) = db.get(idx_key).map_err(|e| e.to_string())?.value {
+   |                                                                                                 ++++++
+
+error[E0308]: mismatched types
+  --> services\orchestrator\src\routes_jobs.rs:82:16
+   |
+82 |         db.set(idx_key, &idx_bytes).map_err(|e| e.to_string())?;
+   |            --- ^^^^^^^ expected `&[u8]`, found `&str`
+   |            |
+   |            arguments to this method are incorrect
+   |
+   = note: expected reference `&[u8]`
+              found reference `&str`
+note: method defined here
+  --> E:\repos\AiAgentsModel-\verifiable-ai\crates\vdb\src\lib.rs:85:12
+   |
+85 |     pub fn set(&mut self, key: &[u8], value: &[u8]) -> Result<WriteReceipt> {
+   |            ^^^
+
+error[E0277]: the trait bound `VerifiableKV<FileBackedStorage>: vdb::Storage` is not satisfied
+   --> services\orchestrator\src\routes_jobs.rs:102:44
+    |
+102 |         if let Err(e) = spawn_training_job(vdb, job_id, logs_dir, adapters_dir).await {
+    |                         ------------------ ^^^ the trait `vdb::Storage` is not implemented for `VerifiableKV<FileBackedStorage>`
+    |                         |
+    |                         required by a bound introduced by this call
+    |
+    = help: the following other types implement trait `vdb::Storage`:
+              FileBackedStorage
+              InMemoryStorage
+note: required by a bound in `spawn_training_job`
+   --> services\orchestrator\src\orchestrator_job.rs:25:8
+    |
+ 18 | pub async fn spawn_training_job<S>(
+    |              ------------------ required by a bound in this function
+...
+ 25 |     S: vdb::Storage + Send + Sync + 'static,
+    |        ^^^^^^^^^^^^ required by this bound in `spawn_training_job`
+
+error[E0277]: the trait bound `VerifiableKV<FileBackedStorage>: vdb::Storage` is not satisfied
+   --> services\orchestrator\src\routes_jobs.rs:102:25
+    |
+102 |         if let Err(e) = spawn_training_job(vdb, job_id, logs_dir, adapters_dir).await {
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `vdb::Storage` is not implemented for `VerifiableKV<FileBackedStorage>`
+    |
+    = help: the following other types implement trait `vdb::Storage`:
+              FileBackedStorage
+              InMemoryStorage
+note: required by a bound in `spawn_training_job`
+   --> services\orchestrator\src\orchestrator_job.rs:25:8
+    |
+ 18 | pub async fn spawn_training_job<S>(
+    |              ------------------ required by a bound in this function
+...
+ 25 |     S: vdb::Storage + Send + Sync + 'static,
+    |        ^^^^^^^^^^^^ required by this bound in `spawn_training_job`
+
+error[E0277]: the trait bound `VerifiableKV<FileBackedStorage>: vdb::Storage` is not satisfied
+   --> services\orchestrator\src\routes_jobs.rs:102:81
+    |
+102 |         if let Err(e) = spawn_training_job(vdb, job_id, logs_dir, adapters_dir).await {
+    |                                                                                 ^^^^^ the trait `vdb::Storage` is not implemented for `VerifiableKV<FileBackedStorage>`
+    |
+    = help: the following other types implement trait `vdb::Storage`:
+              FileBackedStorage
+              InMemoryStorage
+note: required by a bound in `spawn_training_job`
+   --> services\orchestrator\src\orchestrator_job.rs:25:8
+    |
+ 18 | pub async fn spawn_training_job<S>(
+    |              ------------------ required by a bound in this function
+...
+ 25 |     S: vdb::Storage + Send + Sync + 'static,
+    |        ^^^^^^^^^^^^ required by this bound in `spawn_training_job`
+
+error[E0308]: mismatched types
+   --> services\orchestrator\src\routes_jobs.rs:120:28
+    |
+120 |         let bytes = db.get(&key).map_err(|e| e.to_string())?.ok_or("job not found")?;
+    |                        --- ^^^^ expected `&[u8]`, found `&String`
+    |                        |
+    |                        arguments to this method are incorrect
+    |
+    = note: expected reference `&[u8]`
+               found reference `&std::string::String`
+note: method defined here
+   --> E:\repos\AiAgentsModel-\verifiable-ai\crates\vdb\src\lib.rs:303:12
+    |
+303 |     pub fn get(&self, key: &[u8]) -> Result<ReadResult> {
+    |            ^^^
+
+error[E0599]: no method named `ok_or` found for struct `ReadResult` in the current scope
+   --> services\orchestrator\src\routes_jobs.rs:120:62
+    |
+120 |         let bytes = db.get(&key).map_err(|e| e.to_string())?.ok_or("job not found")?;
+    |                                                              ^^^^^ method not found in `ReadResult`
+    |
+help: one of the expressions' fields has a method of the same name
+    |
+120 |         let bytes = db.get(&key).map_err(|e| e.to_string())?.value.ok_or("job not found")?;
+    |                                                              ++++++
+
+warning: variable does not need to be mutable
+  --> services\orchestrator\src\main.rs:83:9
+   |
+83 |     let mut job = JobStatus {
+   |         ----^^^
+   |         |
+   |         help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+error[E0277]: the trait bound `VerifiableKV<FileBackedStorage>: vdb::Storage` is not satisfied
+   --> services\orchestrator\src\main.rs:52:59
+    |
+ 52 |     if let Err(e) = crate::orchestrator_job::recover_jobs(app_state.vdb.clone()).await {
+    |                     ------------------------------------- ^^^^^^^^^^^^^^^^^^^^^ the trait `vdb::Storage` is not implemented for `VerifiableKV<FileBackedStorage>`
+    |                     |
+    |                     required by a bound introduced by this call
+    |
+    = help: the following other types implement trait `vdb::Storage`:
+              FileBackedStorage
+              InMemoryStorage
+note: required by a bound in `recover_jobs`
+   --> services\orchestrator\src\orchestrator_job.rs:178:8
+    |
+176 | pub async fn recover_jobs<S>(vdb: Arc<RwLock<S>>) -> Result<(), String>
+    |              ------------ required by a bound in this function
+177 | where 
+178 |     S: vdb::Storage + Send + Sync + 'static,
+    |        ^^^^^^^^^^^^ required by this bound in `recover_jobs`
+
+error[E0277]: the trait bound `VerifiableKV<FileBackedStorage>: vdb::Storage` is not satisfied
+   --> services\orchestrator\src\main.rs:52:21
+    |
+ 52 |     if let Err(e) = crate::orchestrator_job::recover_jobs(app_state.vdb.clone()).await {
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `vdb::Storage` is not implemented for `VerifiableKV<FileBackedStorage>`
+    |
+    = help: the following other types implement trait `vdb::Storage`:
+              FileBackedStorage
+              InMemoryStorage
+note: required by a bound in `recover_jobs`
+   --> services\orchestrator\src\orchestrator_job.rs:178:8
+    |
+176 | pub async fn recover_jobs<S>(vdb: Arc<RwLock<S>>) -> Result<(), String>
+    |              ------------ required by a bound in this function
+177 | where 
+178 |     S: vdb::Storage + Send + Sync + 'static,
+    |        ^^^^^^^^^^^^ required by this bound in `recover_jobs`
+
+error[E0277]: the trait bound `VerifiableKV<FileBackedStorage>: vdb::Storage` is not satisfied
+   --> services\orchestrator\src\main.rs:52:82
+    |
+ 52 |     if let Err(e) = crate::orchestrator_job::recover_jobs(app_state.vdb.clone()).await {
+    |                                                                                  ^^^^^ the trait `vdb::Storage` is not implemented for `VerifiableKV<FileBackedStorage>`
+    |
+    = help: the following other types implement trait `vdb::Storage`:
+              FileBackedStorage
+              InMemoryStorage
+note: required by a bound in `recover_jobs`
+   --> services\orchestrator\src\orchestrator_job.rs:178:8
+    |
+176 | pub async fn recover_jobs<S>(vdb: Arc<RwLock<S>>) -> Result<(), String>
+    |              ------------ required by a bound in this function
+177 | where 
+178 |     S: vdb::Storage + Send + Sync + 'static,
+    |        ^^^^^^^^^^^^ required by this bound in `recover_jobs`
+
+Some errors have detailed explanations: E0277, E0282, E0308, E0599.
+For more information about an error, try `rustc --explain E0277`.
+warning: `orchestrator` (bin "orchestrator") generated 9 warnings
+error: could not compile `orchestrator` (bin "orchestrator") due to 44 previous errors; 9 warnings emitted

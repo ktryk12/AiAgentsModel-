@@ -1,0 +1,8 @@
+{"type": "start", "ts": 1766355852}
+{"type": "loading_base"}
+{"type": "loading_dataset"}
+{"type": "progress", "epoch": 1, "step": 0, "loss": 2.5}
+{"type": "progress", "epoch": 1, "step": 10, "loss": 2.0}
+{"type": "progress", "epoch": 1, "step": 20, "loss": 1.5}
+{"type": "saving"}
+{"type": "done", "adapter_dir": "data/adapters\\743fd779-8658-445d-88c6-6d04cf9e9422", "adapter_manifest_hash_hex": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"}

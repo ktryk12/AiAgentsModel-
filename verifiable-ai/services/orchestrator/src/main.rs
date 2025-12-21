@@ -8,9 +8,12 @@ mod provider_lmstudio;
 pub mod runtime;
 pub mod runtime_reload;
 pub mod types_training;
+pub mod types_jobs;
 pub mod training_store;
 pub mod dataset_validator;
+pub mod orchestrator_job;
 pub mod routes_training;
+pub mod routes_jobs;
 mod routes_runtime;
 mod routes_chat;
 
@@ -45,6 +48,11 @@ async fn main() {
     // Spawn background reloader
     tokio::spawn(crate::runtime_reload::reload_from_vdb(app_state.clone()));
 
+    // RECOVERY: Scan jobs and fail non-terminal ones from previous run
+    if let Err(e) = crate::orchestrator_job::recover_jobs(app_state.vdb.clone()).await {
+        eprintln!("WARNING: Job recovery failed: {}", e);
+    }
+
     let app = Router::new()
         .route("/models/download", post(download_model))
         .route("/models/jobs/:id", get(get_job))
@@ -55,6 +63,8 @@ async fn main() {
         .route("/chat/completions", post(crate::routes_chat::chat_complete))
         .route("/training/datasets", post(crate::routes_training::post_dataset))
         .route("/training/datasets", get(crate::routes_training::get_datasets))
+        .route("/training/jobs", post(crate::routes_jobs::perform_create_job))
+        .route("/training/jobs/:id", get(crate::routes_jobs::get_job))
         .layer(CorsLayer::permissive())
         .with_state(app_state);
 
