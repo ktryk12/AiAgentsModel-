@@ -94,9 +94,9 @@ services:
       postgres:
         condition: service_healthy
       comfyui:
-        condition: service_healthy
+        condition: service_started
       minio:
-        condition: service_healthy
+        condition: service_started
     networks:
       - verifiable-net
     restart: unless-stopped
