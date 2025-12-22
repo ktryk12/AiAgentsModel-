@@ -102,3 +102,16 @@ services:
     networks:
       - verifiable-net
     restart: unless-stopped
+
+  ui:
+    build:
+      context: ./services/ui
+      args:
+        VITE_API_URL: "http://localhost:8080"
+    ports:
+      - "3000:80"
+    depends_on:
+      - orchestrator
+    networks:
+      - verifiable-net
+    restart: unless-stopped
