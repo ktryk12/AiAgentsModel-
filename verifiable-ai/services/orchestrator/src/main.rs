@@ -19,28 +19,27 @@ mod worker_loop;
 mod types;
 mod worker;
 
-use axum::{routing::{get, post}, Json, Router, extract::{Path, State}, http::StatusCode};
+use axum::{routing::{get, post}, Router, extract::{Path, State}, http::StatusCode};
 use tower_http::cors::CorsLayer;
 use uuid::Uuid;
 use tokio::sync::Mutex;
 use std::sync::Arc;
 
-use types::*;
-use worker::*;
+// use types::*;
+// use worker::*;
 use state::*;
 use routes_models::*;
-use vdb_exec::with_vdb_blocking;
+// use vdb_exec::with_vdb_blocking;
 
-use tokio::{io::{AsyncBufReadExt, BufReader}, process::Command};
 use std::path::PathBuf;
 
-use modelops::{ModelFile, ModelRecord, ModelStatus, manifest_hash, put_model, add_model_to_index};
+// use modelops::{ModelFile, ModelRecord, ModelStatus, manifest_hash, put_model, add_model_to_index};
 
 use anyhow::{Context, Result};
 // use aws_config::BehaviorVersion;
 // use aws_sdk_s3::{config::Region, Client as S3Client};
 use sqlx::PgPool;
-use tracing::{info, warn};
+use tracing::info;
 
 use crate::config::AppConfig;
 
