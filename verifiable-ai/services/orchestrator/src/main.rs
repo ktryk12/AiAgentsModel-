@@ -174,7 +174,10 @@ async fn get_job(
     Path(id): Path<String>,
 ) -> Result<Json<JobStatus>, StatusCode> {
     let id = Uuid::parse_str(&id).map_err(|_| StatusCode::BAD_REQUEST)?;
-    st.get_job(id).await.map(Json).ok_or(StatusCode::NOT_FOUND)
+    match st.get_job(id).await {
+        Some(job) => Ok(Json(job)),
+        None => Err(StatusCode::NOT_FOUND),
+    }
 }
 
 async fn run_worker_job(st: SharedState, job_id: Uuid, req: DownloadRequest) {
@@ -184,11 +187,11 @@ async fn run_worker_job(st: SharedState, job_id: Uuid, req: DownloadRequest) {
         j.message = Some("starting worker".into());
     }).await;
 
-    let allow_patterns = req.allow_patterns.as_ref().map(|v| v.join(","));
-    let ignore_patterns = req.ignore_patterns.as_ref().map(|v| v.join(","));
+    let allow_patterns: Option<String> = req.allow_patterns.as_ref().map(|v| v.join(","));
+    let ignore_patterns: Option<String> = req.ignore_patterns.as_ref().map(|v| v.join(","));
 
     // Resolve absolute path to worker script
-    let script_path = std::env::current_dir()
+    let script_path: PathBuf = std::env::current_dir()
         .unwrap_or_else(|_| PathBuf::from("."))
         .join("workers/hf_downloader.py");
         

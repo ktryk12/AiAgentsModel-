@@ -83,3 +83,20 @@ services:
       interval: 30s
       timeout: 10s
       retries: 10
+
+  orchestrator:
+    build:
+      context: .
+      dockerfile: services/orchestrator/Dockerfile
+    env_file:
+      - services/orchestrator/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      comfyui:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - verifiable-net
+    restart: unless-stopped
