@@ -1,4 +1,5 @@
 use std::time::Duration;
+use std::collections::HashMap;
 
 use anyhow::{Context, Result};
 use serde_json::Value as JsonValue;
@@ -10,7 +11,7 @@ use tracing::{error, info, warn};
 use crate::state::SharedState;
 
 const POLL_EVERY: Duration = Duration::from_secs(5);
-const MAX_CONCURRENT: usize = 2;
+const MAX_TOTAL: usize = 2; // Total concurrent jobs across all queues
 const LEASE_SECS: i64 = 30;
 const HEARTBEAT_EVERY: Duration = Duration::from_secs(10);
 const MAX_ATTEMPTS: i32 = 5;
@@ -21,11 +22,19 @@ fn worker_id() -> String {
     std::env::var("HOSTNAME").unwrap_or_else(|_| "orchestrator".to_string())
 }
 
+// Hardcoded Quotas
+fn quota(queue: &str) -> usize {
+    match queue {
+        "train" => 1,
+        "download" => 1,
+        "default" => 1,
+        _ => 1,
+    }
+}
+
 pub async fn run_worker_loop(state: SharedState) {
     let wid = worker_id();
-    info!(worker_id=%wid, "worker_loop: started (fair scheduling + priority)");
-
-    let mut running: usize = 0;
+    info!(worker_id=%wid, "worker_loop: started (fair + quotas)");
 
     loop {
         // Reaper: fail jobs with too many attempts
@@ -33,15 +42,9 @@ pub async fn run_worker_loop(state: SharedState) {
             if n > 0 { warn!("reaper: failed {n} jobs due to max attempts"); }
         }
 
-        // Naive concurrency check
-        if running >= MAX_CONCURRENT {
-            sleep(Duration::from_millis(500)).await;
-            continue;
-        }
-
-        match claim_one_job_fair(&state.pg_pool, &wid).await {
+        match claim_one_job_fair_quota(&state.pg_pool, &wid).await {
             Ok(Some(job)) => {
-                running += 1;
+                // Success claim
                 let st = state.clone();
                 let wid2 = wid.clone();
                 tokio::spawn(async move {
@@ -51,6 +54,7 @@ pub async fn run_worker_loop(state: SharedState) {
                 });
             }
             Ok(None) => {
+                // No job claimed
                 sleep(Duration::from_millis(1000)).await;
             }
             Err(e) => {
@@ -116,6 +120,7 @@ struct JobRow {
     payload: JsonValue,
     attempts: i32,
     priority: i32,
+    queue: String,
 }
 
 #[derive(Debug, Clone)]
@@ -125,6 +130,39 @@ struct ClaimedJob {
     payload: JsonValue,
     attempts: i32,
     priority: i32,
+    queue: String,
+}
+
+#[derive(Debug, Clone)]
+struct Usage {
+    total_running: usize,
+    running_by_queue: HashMap<String, usize>,
+}
+
+async fn get_usage(pool: &PgPool) -> Result<Usage> {
+    let rows = sqlx::query(
+        r#"
+        SELECT queue, COUNT(*)::bigint AS running
+        FROM jobs
+        WHERE status='running'
+        GROUP BY queue
+        "#
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let mut running_by_queue = HashMap::new();
+    let mut total_running = 0usize;
+
+    for r in rows {
+        let q: String = r.get("queue");
+        let n: i64 = r.get("running");
+        let count = n as usize;
+        total_running += count;
+        running_by_queue.insert(q, count);
+    }
+
+    Ok(Usage { total_running, running_by_queue })
 }
 
 fn extract_dataset_id(payload: &serde_json::Value) -> Option<String> {
@@ -158,12 +196,12 @@ async fn try_acquire_dataset_lock(
     Ok(row.is_some())
 }
 
-// --- Fair Scheduling Logic ---
+// --- Fair Scheduling + Quota Logic ---
 
 async fn fetch_candidates(pool: &PgPool) -> Result<Vec<JobRow>> {
     let rows: Vec<JobRow> = sqlx::query_as(
         r#"
-        SELECT id, kind, payload, attempts, priority
+        SELECT id, kind, payload, attempts, priority, queue
         FROM jobs
         WHERE
           attempts < $1
@@ -190,7 +228,6 @@ async fn try_claim_candidate(
 ) -> Result<Option<ClaimedJob>> {
     let mut tx = pool.begin().await?;
 
-    // Re-lock this specific job 
     let locked: Option<uuid::Uuid> = sqlx::query_scalar(
         r#"
         SELECT id
@@ -249,13 +286,30 @@ async fn try_claim_candidate(
         payload: job.payload.clone(),
         attempts: job.attempts + 1,
         priority: job.priority,
+        queue: job.queue.clone(),
     }))
 }
 
-async fn claim_one_job_fair(pool: &PgPool, wid: &str) -> Result<Option<ClaimedJob>> {
+async fn claim_one_job_fair_quota(pool: &PgPool, wid: &str) -> Result<Option<ClaimedJob>> {
+    let usage = get_usage(pool).await?;
+
+    // Check MAX TOTAL concurrency
+    if usage.total_running >= MAX_TOTAL {
+        return Ok(None);
+    }
+
     let candidates = fetch_candidates(pool).await?;
 
     for job in candidates {
+        // Queue Quota Check
+        let q = job.queue.as_str();
+        let cap = quota(q);
+        let used = usage.running_by_queue.get(q).copied().unwrap_or(0);
+
+        if used >= cap {
+            continue; // queue full, scan next
+        }
+
         if let Some(claimed) = try_claim_candidate(pool, &job, wid).await? {
             return Ok(Some(claimed));
         }
@@ -313,13 +367,14 @@ async fn release_dataset_lock(pool: &PgPool, dataset_id: &str, job_id: uuid::Uui
 }
 
 async fn execute_job(state: SharedState, job: ClaimedJob, wid: String) -> Result<()> {
-    info!(job_id=%job.id, kind=%job.kind, attempts=%job.attempts, priority=%job.priority, "worker: starting job");
+    info!(job_id=%job.id, kind=%job.kind, queue=%job.queue, priority=%job.priority, "worker: starting job");
 
     append_event(&state.pg_pool, job.id, serde_json::json!({
         "type": "start",
         "source": "orchestrator",
         "message": "Starting worker process",
         "kind": job.kind,
+        "queue": job.queue,
         "attempts": job.attempts,
         "priority": job.priority
     }))
