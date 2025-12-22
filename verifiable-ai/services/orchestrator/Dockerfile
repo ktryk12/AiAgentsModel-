@@ -46,6 +46,7 @@ RUN mkdir -p examples/claim-demo/src && printf "fn main(){}\n" > examples/claim-
 RUN cargo build -p orchestrator --release
 
 # Now copy real source
+COPY services/orchestrator/migrations services/orchestrator/migrations
 COPY services services
 COPY crates crates
 COPY examples examples
@@ -55,6 +56,8 @@ RUN touch services/orchestrator/src/main.rs
 RUN touch crates/vdb/src/lib.rs
 RUN touch crates/modelops/src/lib.rs
 RUN touch crates/claims/src/lib.rs
+
+
 RUN cargo build -p orchestrator --release
 
 # ---- runtime stage ----

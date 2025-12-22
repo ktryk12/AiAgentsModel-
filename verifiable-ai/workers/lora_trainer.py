@@ -1,6 +1,14 @@
 import sys
 import time
 import json
+import signal
+
+# Clean SIGTERM handling for Phase 10 (Process Control)
+def handle_sigterm(sig, frame):
+    print(json.dumps({"type": "cancelled", "source": "worker", "message": "Caught SIGTERM, exiting"}), flush=True)
+    sys.exit(0)
+
+signal.signal(signal.SIGTERM, handle_sigterm)
 import argparse
 
 def emit(event_type, **kwargs):

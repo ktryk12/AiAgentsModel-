@@ -12,7 +12,7 @@ chrono = { version = "0.4", features = ["serde"] }
 reqwest = { version = "0.12", features = ["json", "default-tls"] }
 
 # postgres
-sqlx = { version = "0.8", features = ["runtime-tokio-native-tls", "postgres", "macros", "uuid", "chrono", "json"] }
+sqlx = { version = "0.7", features = ["runtime-tokio-native-tls", "postgres", "macros", "uuid", "chrono", "json"] }
 
 # aws/minio (S3) - deferred due to build issues
 # aws-config = ...
@@ -29,11 +29,14 @@ tower-http = { workspace = true, features = ["cors"] }
 uuid = { workspace = true, features = ["v4", "serde"] }
 hex = { workspace = true, features = ["serde"] }
 blake3 = { workspace = true }
+hmac = "0.12"
+sha2 = "0.10"
 bytes = "1"
 anyhow = "1"
 async-trait = "0.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+libc = "0.2"
 
 vdb = { path = "../../crates/vdb" }
 modelops = { path = "../../crates/modelops" }

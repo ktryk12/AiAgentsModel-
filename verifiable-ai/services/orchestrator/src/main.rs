@@ -18,6 +18,8 @@ mod routes_chat;
 mod worker_loop;
 mod types;
 mod worker;
+pub mod events;
+mod webhooks;
 
 use axum::{routing::{get, post}, Router, extract::{Path, State}, http::StatusCode};
 use tower_http::cors::CorsLayer;
@@ -98,6 +100,12 @@ async fn main() -> Result<()> {
     if let Err(e) = crate::orchestrator_job::recover_jobs(app_state.vdb.clone()).await {
         eprintln!("WARNING: Job recovery failed: {}", e);
     }
+    
+    // Spawn Webhook Dispatcher (Phase 11)
+    let shared_for_webhooks = app_state.clone();
+    tokio::spawn(async move {
+        crate::webhooks::run_webhook_dispatcher(shared_for_webhooks).await;
+    });
 
     let app = Router::new()
         //.route("/models/download", post(download_model)) // Removed: unified into training/jobs
@@ -110,7 +118,11 @@ async fn main() -> Result<()> {
         .route("/training/jobs/:id", get(crate::routes_jobs::get_job))
         .route("/training/scheduler", get(crate::routes_jobs::get_scheduler_metrics))
         .layer(CorsLayer::permissive())
-        .with_state(app_state);
+        .route("/training/jobs/:id/cancel", post(routes_jobs::cancel_job))
+        .route("/training/jobs/:id/retry", post(routes_jobs::retry_job))
+        .route("/training/jobs/:id/pause", post(routes_jobs::pause_job))
+        .route("/training/jobs/:id/resume", post(routes_jobs::resume_job))
+        .with_state(app_state.clone());
 
     let addr = &cfg.bind_addr;
     println!("orchestrator listening on http://{addr}");

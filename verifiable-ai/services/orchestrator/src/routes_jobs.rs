@@ -2,6 +2,7 @@ use axum::{Json, extract::{State, Path}, http::StatusCode};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use crate::state::SharedState;
+use crate::events::append_event;
 
 #[derive(Deserialize)]
 pub struct CreateJobRequest {
@@ -69,6 +70,9 @@ struct JobRow {
     created_at: chrono::DateTime<chrono::Utc>,
     updated_at: chrono::DateTime<chrono::Utc>,
     queue: String,
+    finished_at: Option<chrono::DateTime<chrono::Utc>>,
+    cancel_requested: bool,
+    paused: bool,
 }
 
 pub async fn get_job(
@@ -77,7 +81,7 @@ pub async fn get_job(
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let row: Option<JobRow> = sqlx::query_as(
         r#"
-        SELECT id, kind, status, payload, error, created_at, updated_at, queue
+        SELECT id, kind, status, payload, error, created_at, updated_at, queue, finished_at, cancel_requested, paused
         FROM jobs
         WHERE id = $1
         "#
@@ -96,7 +100,10 @@ pub async fn get_job(
             "payload": r.payload,
             "error": r.error,
             "created_at": r.created_at,
-            "updated_at": r.updated_at
+            "updated_at": r.updated_at,
+            "finished_at": r.finished_at,
+            "cancel_requested": r.cancel_requested,
+            "paused": r.paused,
         })))
     } else {
         Err((StatusCode::NOT_FOUND, "Job not found".to_string()))
@@ -139,6 +146,163 @@ pub async fn get_jobs(
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(rows))
+}
+
+#[derive(Serialize)]
+pub struct LifecycleResponse {
+    pub status: String,
+    pub message: String,
+}
+
+// Phase 10: Cancel Job
+pub async fn cancel_job(
+    State(state): State<SharedState>,
+    Path(job_id): Path<Uuid>,
+) -> Result<Json<LifecycleResponse>, (StatusCode, String)> {
+    // 1. Try canceling Pending job (Immediate effect)
+    let res = sqlx::query(
+        r#"
+        UPDATE jobs
+        SET status='cancelled',
+            cancel_requested=TRUE,
+            finished_at=NOW(),
+            lease_owner=NULL,
+            lease_until=NULL,
+            updated_at=NOW()
+        WHERE id=$1 AND status='pending'
+        "#
+    )
+    .bind(job_id)
+    .execute(&state.pg_pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    if res.rows_affected() > 0 {
+        // Also release any locks (though pending jobs shouldn't have locks usually, but good practice)
+        let _ = sqlx::query("DELETE FROM dataset_locks WHERE job_id=$1")
+            .bind(job_id)
+            .execute(&state.pg_pool).await;
+
+        let _ = append_event(&state.pg_pool, job_id, serde_json::json!({
+            "type": "cancelled",
+            "source": "api",
+            "message": "Pending job cancelled via API"
+        })).await;
+
+        return Ok(Json(LifecycleResponse {
+            status: "cancelled".to_string(),
+            message: "Job was pending and is now cancelled".to_string(),
+        }));
+    }
+
+    // 2. Try requesting cancel for Running job
+    let res = sqlx::query(
+        r#"
+        UPDATE jobs
+        SET cancel_requested=TRUE,
+            updated_at=NOW()
+        WHERE id=$1 AND status='running'
+        "#
+    )
+    .bind(job_id)
+    .execute(&state.pg_pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    if res.rows_affected() > 0 {
+        return Ok(Json(LifecycleResponse {
+            status: "cancel_requested".to_string(),
+            message: "Cancel requested for running job".to_string(),
+        }));
+    }
+
+    Ok(Json(LifecycleResponse {
+        status: "noop".to_string(),
+        message: "Job is already terminal or not found".to_string(),
+    }))
+}
+
+// Phase 10: Retry Job
+pub async fn retry_job(
+    State(state): State<SharedState>,
+    Path(job_id): Path<Uuid>,
+) -> Result<Json<LifecycleResponse>, (StatusCode, String)> {
+    let res = sqlx::query(
+        r#"
+        UPDATE jobs
+        SET status='pending',
+            cancel_requested=FALSE,
+            paused=FALSE,
+            error=NULL,
+            lease_owner=NULL,
+            lease_until=NULL,
+            finished_at=NULL,
+            updated_at=NOW()
+        WHERE id=$1 AND status IN ('failed', 'cancelled')
+        "#
+    )
+    .bind(job_id)
+    .execute(&state.pg_pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    if res.rows_affected() > 0 {
+        // Log retry event (best effort)
+        let _ = append_event(&state.pg_pool, job_id, serde_json::json!({
+            "type": "retried",
+            "source": "api",
+            "message": "Job retried via API"
+        })).await;
+
+        return Ok(Json(LifecycleResponse {
+            status: "pending".to_string(),
+            message: "Job has been re-queued".to_string(),
+        }));
+    }
+
+    Err((StatusCode::BAD_REQUEST, "Job must be failed or cancelled to retry".to_string()))
+}
+
+// Phase 10: Pause Job
+pub async fn pause_job(
+    State(state): State<SharedState>,
+    Path(job_id): Path<Uuid>,
+) -> Result<Json<LifecycleResponse>, (StatusCode, String)> {
+    let res = sqlx::query(
+        r#"UPDATE jobs SET paused=TRUE, updated_at=NOW() WHERE id=$1 AND status='running'"#
+    )
+    .bind(job_id)
+    .execute(&state.pg_pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    if res.rows_affected() > 0 {
+        let _ = append_event(&state.pg_pool, job_id, serde_json::json!({"type": "paused", "source": "api"})).await;
+        Ok(Json(LifecycleResponse { status: "paused".to_string(), message: "Job paused".to_string() }))
+    } else {
+        Err((StatusCode::BAD_REQUEST, "Job is not running".to_string()))
+    }
+}
+
+// Phase 10: Resume Job
+pub async fn resume_job(
+    State(state): State<SharedState>,
+    Path(job_id): Path<Uuid>,
+) -> Result<Json<LifecycleResponse>, (StatusCode, String)> {
+    let res = sqlx::query(
+        r#"UPDATE jobs SET paused=FALSE, updated_at=NOW() WHERE id=$1 AND status='running'"#
+    )
+    .bind(job_id)
+    .execute(&state.pg_pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    if res.rows_affected() > 0 {
+        let _ = append_event(&state.pg_pool, job_id, serde_json::json!({"type": "resumed", "source": "api"})).await;
+        Ok(Json(LifecycleResponse { status: "running".to_string(), message: "Job resumed".to_string() }))
+    } else {
+        Err((StatusCode::BAD_REQUEST, "Job is not running".to_string()))
+    }
 }
 
 #[derive(Serialize)]

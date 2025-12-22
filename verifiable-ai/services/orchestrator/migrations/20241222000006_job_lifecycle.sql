@@ -1,0 +1,8 @@
+ALTER TABLE jobs
+  ADD COLUMN IF NOT EXISTS cancel_requested BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS paused BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS finished_at TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_jobs_cancel_requested
+  ON jobs (cancel_requested)
+  WHERE cancel_requested = TRUE;

@@ -1,5 +1,6 @@
 use std::time::Duration;
 use std::collections::HashMap;
+use std::os::unix::process::ExitStatusExt;
 
 use anyhow::{Context, Result};
 use serde_json::Value as JsonValue;
@@ -8,7 +9,10 @@ use tokio::{io::{AsyncBufReadExt, BufReader}, process::Command, time::sleep};
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 
+use libc;
+
 use crate::state::SharedState;
+use crate::events::append_event;
 
 const POLL_EVERY: Duration = Duration::from_secs(5);
 const MAX_TOTAL: usize = 2; // Total concurrent jobs across all queues
@@ -17,6 +21,8 @@ const HEARTBEAT_EVERY: Duration = Duration::from_secs(10);
 const MAX_ATTEMPTS: i32 = 5;
 const SCAN_LIMIT: i64 = 10;
 const AGING_EVERY: Duration = Duration::from_secs(60);
+const CONTROL_POLL: Duration = Duration::from_secs(1);
+const TERM_GRACE: Duration = Duration::from_secs(5);
 
 fn worker_id() -> String {
     std::env::var("HOSTNAME").unwrap_or_else(|_| "orchestrator".to_string())
@@ -44,7 +50,7 @@ fn queue_lock_key(queue: &str) -> i64 {
 
 pub async fn run_worker_loop(state: SharedState) {
     let wid = worker_id();
-    info!(worker_id=%wid, "worker_loop: started (strict quotas + registry)");
+    info!(worker_id=%wid, "worker_loop: started (strict quotas + registry + lifecycle)");
 
     // Register worker and start heartbeat
     if let Err(e) = register_worker(&state.pg_pool, &wid, &wid).await {
@@ -83,6 +89,224 @@ pub async fn run_worker_loop(state: SharedState) {
             }
         }
     }
+}
+
+// Phase 10: Helper to kill child process gracefully
+async fn terminate_then_kill(child: &mut tokio::process::Child) {
+    if let Some(pid) = child.id() {
+        // Send SIGTERM using libc
+        unsafe {
+            libc::kill(pid as i32, libc::SIGTERM);
+        }
+    }
+    // Wait for grace period
+    if tokio::time::timeout(TERM_GRACE, child.wait()).await.is_err() {
+        warn!("child did not exit after grace period, sending SIGKILL");
+        let _ = child.kill().await;
+    }
+}
+
+async fn execute_job(state: SharedState, job: ClaimedJob, wid: String) -> Result<()> {
+    info!(job_id=%job.id, kind=%job.kind, queue=%job.queue, priority=%job.priority, "worker: starting job");
+
+    append_event(&state.pg_pool, job.id, serde_json::json!({
+        "type": "start",
+        "source": "orchestrator",
+        "message": "Starting worker process",
+        "kind": job.kind,
+        "queue": job.queue,
+        "attempts": job.attempts,
+        "priority": job.priority
+    }))
+    .await?;
+
+    let (script, args) = match job.kind.as_str() {
+        "hf_download" => {
+            let repo_id = job.payload.get("repo_id").and_then(|v| v.as_str()).unwrap_or("");
+            let revision = job.payload.get("revision").and_then(|v| v.as_str());
+            let mut a = vec![repo_id.to_string()];
+            if let Some(r) = revision { a.push(r.to_string()); }
+            ("/app/workers/hf_downloader.py", a)
+        }
+        "lora_train" => {
+            ("/app/workers/lora_trainer.py", vec![job.id.to_string()])
+        }
+        other => {
+            if let Some(ds_id) = extract_dataset_id(&job.payload) {
+                let _ = release_dataset_lock(&state.pg_pool, &ds_id, job.id).await;
+            }
+            fail_job(&state.pg_pool, job.id, format!("unknown job kind: {other}")).await?;
+            return Ok(());
+        }
+    };
+    
+    // Heartbeat setup
+    let cancel = CancellationToken::new();
+    let cancel_hb = cancel.clone();
+    let pool = state.pg_pool.clone();
+    let job_id = job.id;
+    let wid_hb = wid.clone();
+    let dataset_id = extract_dataset_id(&job.payload);
+    
+    tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                _ = cancel_hb.cancelled() => break,
+                _ = tokio::time::sleep(HEARTBEAT_EVERY) => {
+                    if let Err(e) = heartbeat(&pool, job_id, &wid_hb).await {
+                        tracing::warn!(job_id=%job_id, "heartbeat failed: {:?}", e);
+                    }
+                    if let Some(ds) = &dataset_id {
+                        if let Err(e) = heartbeat_dataset_lock(&pool, ds, job_id).await {
+                            tracing::warn!(job_id=%job_id, dataset=%ds, "dataset heartbeat failed: {:?}", e);
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    let mut cmd = Command::new("python3");
+    cmd.arg(script);
+    for a in args {
+        cmd.arg(a);
+    }
+    cmd.stdout(std::process::Stdio::piped());
+    cmd.stderr(std::process::Stdio::piped());
+
+    let mut child = cmd.spawn().context("failed to spawn python worker")?;
+    let child_id = child.id().unwrap_or(0); // keep ID for logging
+
+    // Capture stdout/stderr
+    if let Some(stdout) = child.stdout.take() {
+        let pool = state.pg_pool.clone();
+        let job_id = job.id;
+        tokio::spawn(async move {
+            let mut lines = BufReader::new(stdout).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                 if let Ok(json) = serde_json::from_str::<JsonValue>(&line) {
+                    let _ = append_event(&pool, job_id, json).await;
+                } else {
+                    let _ = append_event(&pool, job_id, serde_json::json!({
+                        "type":"progress",
+                        "source":"orchestrator",
+                        "line": line
+                    })).await;
+                }
+            }
+        });
+    }
+
+    if let Some(stderr) = child.stderr.take() {
+        let pool = state.pg_pool.clone();
+        let job_id = job.id;
+        tokio::spawn(async move {
+            let mut lines = BufReader::new(stderr).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                 let _ = append_event(&pool, job_id, serde_json::json!({
+                    "type":"progress",
+                    "source":"stderr",
+                    "line": line
+                })).await;
+            }
+        });
+    }
+
+    // Phase 10: Control Loop
+    let mut exit_status = None;
+    
+    loop {
+        // Poll for flags
+        let flags_row = sqlx::query(
+            r#"SELECT cancel_requested, paused FROM jobs WHERE id=$1"#
+        )
+        .bind(job.id)
+        .fetch_optional(&state.pg_pool)
+        .await
+        .context("failed to poll job flags")?;
+
+        if let Some(r) = flags_row {
+            let cancel_req: bool = r.get("cancel_requested");
+            let paused: bool = r.get("paused");
+
+            if cancel_req {
+                 info!(job_id=%job.id, "worker: cancel needed, terminating child");
+                 terminate_then_kill(&mut child).await;
+                 
+                 // Mark cancelled in DB
+                 let _ = append_event(&state.pg_pool, job.id, serde_json::json!({
+                     "type": "cancelled",
+                     "source": "orchestrator",
+                     "message": "Job cancelled by user"
+                 })).await;
+                 
+                 sqlx::query(
+                     r#"
+                     UPDATE jobs
+                     SET status='cancelled',
+                         finished_at=NOW(),
+                         lease_owner=NULL,
+                         lease_until=NULL,
+                         updated_at=NOW()
+                     WHERE id=$1 AND status='running' AND lease_owner=$2
+                     "#
+                 )
+                 .bind(job.id)
+                 .bind(&wid)
+                 .execute(&state.pg_pool)
+                 .await?;
+
+                 // Release locks
+                 if let Some(ds) = extract_dataset_id(&job.payload) {
+                    let _ = release_dataset_lock(&state.pg_pool, &ds, job.id).await;
+                 }
+                 
+                 cancel.cancel(); // stop heartbeat
+                 return Ok(());
+            }
+
+            if paused {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+                continue;
+            }
+        }
+
+        // Check if child exited
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                exit_status = Some(status);
+                break;
+            }
+            Ok(None) => {
+                tokio::time::sleep(CONTROL_POLL).await;
+            }
+            Err(e) => {
+                error!("error waiting for child: {e:?}");
+                break;
+            }
+        }
+    }
+    
+    // If we're here, child exited naturally (or we errored waiting)
+    let status = exit_status.unwrap_or_else(|| std::process::ExitStatus::from_raw(0)); // fallback
+    
+    cancel.cancel(); // stop heartbeat
+    
+    if let Some(ds) = extract_dataset_id(&job.payload) {
+        let _ = release_dataset_lock(&state.pg_pool, &ds, job.id).await;
+    }
+
+    if status.success() {
+        finish_job(&state.pg_pool, job.id).await?;
+        info!(job_id=%job.id, "worker: job done");
+    } else {
+        // If it wasn't a manual cancel (handled above), it's a failure
+        // Unless it was a kill signal we sent? No, we return early on cancel.
+        fail_job(&state.pg_pool, job.id, format!("worker exit status: {status}")).await?;
+        warn!(job_id=%job.id, "worker: job failed");
+    }
+
+    Ok(())
 }
 
 pub async fn run_aging_task(state: SharedState) {
@@ -368,7 +592,7 @@ async fn try_claim_candidate_strict(
 async fn claim_one_job_fair_quota_strict(pool: &PgPool, wid: &str) -> Result<Option<ClaimedJob>> {
     let usage = get_usage(pool).await?;
 
-    // Check MAX TOTAL concurrency (Soft check is fine here, strict check inside tx is per-queue)
+    // Check MAX TOTAL concurrency
     if usage.total_running >= MAX_TOTAL {
         return Ok(None);
     }
@@ -442,139 +666,7 @@ async fn release_dataset_lock(pool: &PgPool, dataset_id: &str, job_id: uuid::Uui
     Ok(())
 }
 
-async fn execute_job(state: SharedState, job: ClaimedJob, wid: String) -> Result<()> {
-    info!(job_id=%job.id, kind=%job.kind, queue=%job.queue, priority=%job.priority, "worker: starting job");
 
-    append_event(&state.pg_pool, job.id, serde_json::json!({
-        "type": "start",
-        "source": "orchestrator",
-        "message": "Starting worker process",
-        "kind": job.kind,
-        "queue": job.queue,
-        "attempts": job.attempts,
-        "priority": job.priority
-    }))
-    .await?;
-
-    let (script, args) = match job.kind.as_str() {
-        "hf_download" => {
-            let repo_id = job.payload.get("repo_id").and_then(|v| v.as_str()).unwrap_or("");
-            let revision = job.payload.get("revision").and_then(|v| v.as_str());
-            let mut a = vec![repo_id.to_string()];
-            if let Some(r) = revision { a.push(r.to_string()); }
-            ("/app/workers/hf_downloader.py", a)
-        }
-        "lora_train" => {
-            ("/app/workers/lora_trainer.py", vec![job.id.to_string()])
-        }
-        other => {
-            if let Some(ds_id) = extract_dataset_id(&job.payload) {
-                let _ = release_dataset_lock(&state.pg_pool, &ds_id, job.id).await;
-            }
-            fail_job(&state.pg_pool, job.id, format!("unknown job kind: {other}")).await?;
-            return Ok(());
-        }
-    };
-    
-    let cancel = CancellationToken::new();
-    let cancel_hb = cancel.clone();
-    let pool = state.pg_pool.clone();
-    let job_id = job.id;
-    let wid_hb = wid.clone();
-    let dataset_id = extract_dataset_id(&job.payload);
-    
-    tokio::spawn(async move {
-        loop {
-            tokio::select! {
-                _ = cancel_hb.cancelled() => break,
-                _ = tokio::time::sleep(HEARTBEAT_EVERY) => {
-                    if let Err(e) = heartbeat(&pool, job_id, &wid_hb).await {
-                        tracing::warn!(job_id=%job_id, "heartbeat failed: {:?}", e);
-                    }
-                    if let Some(ds) = &dataset_id {
-                        if let Err(e) = heartbeat_dataset_lock(&pool, ds, job_id).await {
-                            tracing::warn!(job_id=%job_id, dataset=%ds, "dataset heartbeat failed: {:?}", e);
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    let mut cmd = Command::new("python3");
-    cmd.arg(script);
-    for a in args {
-        cmd.arg(a);
-    }
-    cmd.stdout(std::process::Stdio::piped());
-    cmd.stderr(std::process::Stdio::piped());
-
-    let mut child = cmd.spawn().context("failed to spawn python worker")?;
-
-    if let Some(stdout) = child.stdout.take() {
-        let pool = state.pg_pool.clone();
-        let job_id = job.id;
-        tokio::spawn(async move {
-            let mut lines = BufReader::new(stdout).lines();
-            while let Ok(Some(line)) = lines.next_line().await {
-                if let Ok(json) = serde_json::from_str::<JsonValue>(&line) {
-                    let _ = append_event(&pool, job_id, json).await;
-                } else {
-                    let _ = append_event(&pool, job_id, serde_json::json!({
-                        "type":"progress",
-                        "source":"orchestrator",
-                        "line": line
-                    })).await;
-                }
-            }
-        });
-    }
-
-    if let Some(stderr) = child.stderr.take() {
-        let pool = state.pg_pool.clone();
-        let job_id = job.id;
-        tokio::spawn(async move {
-            let mut lines = BufReader::new(stderr).lines();
-            while let Ok(Some(line)) = lines.next_line().await {
-                let _ = append_event(&pool, job_id, serde_json::json!({
-                    "type":"progress",
-                    "source":"stderr",
-                    "line": line
-                })).await;
-            }
-        });
-    }
-
-    let status = child.wait().await?;
-    
-    cancel.cancel();
-    
-    if let Some(ds) = extract_dataset_id(&job.payload) {
-        let _ = release_dataset_lock(&state.pg_pool, &ds, job.id).await;
-    }
-
-    if status.success() {
-        finish_job(&state.pg_pool, job.id).await?;
-        info!(job_id=%job.id, "worker: job done");
-    } else {
-        fail_job(&state.pg_pool, job.id, format!("worker exit status: {status}")).await?;
-        warn!(job_id=%job.id, "worker: job failed");
-    }
-
-    Ok(())
-}
-
-async fn append_event(pool: &PgPool, job_id: uuid::Uuid, event: JsonValue) -> Result<()> {
-    // Runtime-checked
-    sqlx::query(
-        r#"INSERT INTO job_events (job_id, event) VALUES ($1, $2)"#
-    )
-    .bind(job_id)
-    .bind(event)
-    .execute(pool)
-    .await?;
-    Ok(())
-}
 
 async fn finish_job(pool: &PgPool, job_id: uuid::Uuid) -> Result<()> {
     // Runtime-checked

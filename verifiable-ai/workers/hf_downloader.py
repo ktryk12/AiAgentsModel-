@@ -3,8 +3,16 @@ import os
 import sys
 import json
 import time
+import signal
 import argparse
 from pathlib import Path
+
+# Clean SIGTERM handling for Phase 10 (Process Control)
+def handle_sigterm(sig, frame):
+    print(json.dumps({"type": "cancelled", "source": "worker", "message": "Caught SIGTERM, exiting"}), flush=True)
+    sys.exit(0)
+
+signal.signal(signal.SIGTERM, handle_sigterm)
 
 def emit(obj):
     sys.stdout.write(json.dumps(obj, ensure_ascii=False) + "\n")

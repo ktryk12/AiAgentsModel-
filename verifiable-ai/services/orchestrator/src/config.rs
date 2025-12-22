@@ -12,6 +12,10 @@ pub struct AppConfig {
     pub s3_secret_key: String,
     pub s3_force_path_style: bool,
     pub bind_addr: String,
+    
+    // Phase 11: Webhooks
+    pub webhook_url: Option<String>,
+    pub webhook_secret: Option<String>,
 }
 
 impl AppConfig {
@@ -38,6 +42,10 @@ impl AppConfig {
         if !s3_endpoint.starts_with("http://") && !s3_endpoint.starts_with("https://") {
             bail!("S3_ENDPOINT must start with http:// or https://");
         }
+        
+        // Phase 11: Webhooks
+        let webhook_url = std::env::var("WEBHOOK_URL").ok();
+        let webhook_secret = std::env::var("WEBHOOK_SECRET").ok();
 
         Ok(Self {
             comfyui_url,
@@ -49,6 +57,8 @@ impl AppConfig {
             s3_secret_key,
             s3_force_path_style,
             bind_addr,
+            webhook_url,
+            webhook_secret,
         })
     }
 }
