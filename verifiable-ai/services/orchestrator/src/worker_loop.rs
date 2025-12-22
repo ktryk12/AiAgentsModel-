@@ -15,6 +15,7 @@ const LEASE_SECS: i64 = 30;
 const HEARTBEAT_EVERY: Duration = Duration::from_secs(10);
 const MAX_ATTEMPTS: i32 = 5;
 const SCAN_LIMIT: i64 = 10;
+const AGING_EVERY: Duration = Duration::from_secs(60);
 
 fn worker_id() -> String {
     std::env::var("HOSTNAME").unwrap_or_else(|_| "orchestrator".to_string())
@@ -22,7 +23,7 @@ fn worker_id() -> String {
 
 pub async fn run_worker_loop(state: SharedState) {
     let wid = worker_id();
-    info!(worker_id=%wid, "worker_loop: started (fair scheduling)");
+    info!(worker_id=%wid, "worker_loop: started (fair scheduling + priority)");
 
     let mut running: usize = 0;
 
@@ -60,6 +61,34 @@ pub async fn run_worker_loop(state: SharedState) {
     }
 }
 
+pub async fn run_aging_task(state: SharedState) {
+    info!("aging_task: started");
+    loop {
+        sleep(AGING_EVERY).await;
+
+        let res = sqlx::query(
+            r#"
+            UPDATE jobs
+            SET priority = LEAST(priority + 1, 1000),
+                updated_at = NOW()
+            WHERE status = 'pending'
+            "#
+        )
+        .execute(&state.pg_pool)
+        .await;
+
+        match res {
+            Ok(r) => {
+                let n = r.rows_affected();
+                if n > 0 {
+                    info!("aging: boosted priority for {n} pending jobs");
+                }
+            }
+            Err(e) => warn!("aging: failed: {e:?}"),
+        }
+    }
+}
+
 // Runtime-checked query
 async fn reap_max_attempts(pool: &PgPool) -> Result<u64> {
     let res = sqlx::query(
@@ -86,6 +115,7 @@ struct JobRow {
     kind: String,
     payload: JsonValue,
     attempts: i32,
+    priority: i32,
 }
 
 #[derive(Debug, Clone)]
@@ -94,6 +124,7 @@ struct ClaimedJob {
     kind: String,
     payload: JsonValue,
     attempts: i32,
+    priority: i32,
 }
 
 fn extract_dataset_id(payload: &serde_json::Value) -> Option<String> {
@@ -132,7 +163,7 @@ async fn try_acquire_dataset_lock(
 async fn fetch_candidates(pool: &PgPool) -> Result<Vec<JobRow>> {
     let rows: Vec<JobRow> = sqlx::query_as(
         r#"
-        SELECT id, kind, payload, attempts
+        SELECT id, kind, payload, attempts, priority
         FROM jobs
         WHERE
           attempts < $1
@@ -140,7 +171,7 @@ async fn fetch_candidates(pool: &PgPool) -> Result<Vec<JobRow>> {
             status = 'pending'
             OR (status = 'running' AND (lease_until IS NULL OR lease_until < NOW()))
           )
-        ORDER BY created_at ASC
+        ORDER BY priority DESC, created_at ASC
         LIMIT $2
         "#
     )
@@ -159,9 +190,7 @@ async fn try_claim_candidate(
 ) -> Result<Option<ClaimedJob>> {
     let mut tx = pool.begin().await?;
 
-    // Re-lock this specific job (skip if taken in between)
-    // NOTE: We don't need 'attempts < $2' or status checks strictly if we trust FOR UPDATE SKIP LOCKED will fail or return nothing if it's gone.
-    // But let's be safe and check conditions again.
+    // Re-lock this specific job 
     let locked: Option<uuid::Uuid> = sqlx::query_scalar(
         r#"
         SELECT id
@@ -219,6 +248,7 @@ async fn try_claim_candidate(
         kind: job.kind.clone(),
         payload: job.payload.clone(),
         attempts: job.attempts + 1,
+        priority: job.priority,
     }))
 }
 
@@ -283,14 +313,15 @@ async fn release_dataset_lock(pool: &PgPool, dataset_id: &str, job_id: uuid::Uui
 }
 
 async fn execute_job(state: SharedState, job: ClaimedJob, wid: String) -> Result<()> {
-    info!(job_id=%job.id, kind=%job.kind, attempts=%job.attempts, "worker: starting job");
+    info!(job_id=%job.id, kind=%job.kind, attempts=%job.attempts, priority=%job.priority, "worker: starting job");
 
     append_event(&state.pg_pool, job.id, serde_json::json!({
         "type": "start",
         "source": "orchestrator",
         "message": "Starting worker process",
         "kind": job.kind,
-        "attempts": job.attempts
+        "attempts": job.attempts,
+        "priority": job.priority
     }))
     .await?;
 

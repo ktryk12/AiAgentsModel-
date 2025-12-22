@@ -88,6 +88,12 @@ async fn main() -> Result<()> {
         crate::worker_loop::run_worker_loop(shared_for_worker).await;
     });
 
+    // Spawn Aging Task (Phase 7)
+    let shared_for_aging = app_state.clone();
+    tokio::spawn(async move {
+        crate::worker_loop::run_aging_task(shared_for_aging).await;
+    });
+
     // RECOVERY: Scan jobs and fail non-terminal ones from previous run
     if let Err(e) = crate::orchestrator_job::recover_jobs(app_state.vdb.clone()).await {
         eprintln!("WARNING: Job recovery failed: {}", e);
@@ -102,6 +108,7 @@ async fn main() -> Result<()> {
         .route("/training/datasets", get(crate::routes_training::get_datasets))
         .route("/training/jobs", post(crate::routes_jobs::perform_create_job).get(crate::routes_jobs::get_jobs))
         .route("/training/jobs/:id", get(crate::routes_jobs::get_job))
+        .route("/training/scheduler", get(crate::routes_jobs::get_scheduler_metrics))
         .layer(CorsLayer::permissive())
         .with_state(app_state);
 

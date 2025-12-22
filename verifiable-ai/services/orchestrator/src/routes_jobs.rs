@@ -120,3 +120,55 @@ pub async fn get_jobs(
 
     Ok(Json(rows))
 }
+
+#[derive(Serialize)]
+pub struct SchedulerMetrics {
+    running: i64,
+    pending: i64,
+    locked_datasets: i64,
+    workers_active: i64,
+    capacity_pct: i64,
+}
+
+pub async fn get_scheduler_metrics(
+    State(state): State<SharedState>,
+) -> Result<Json<SchedulerMetrics>, (StatusCode, String)> {
+    let running: i64 = sqlx::query_scalar(
+        r#"SELECT COUNT(*)::bigint FROM jobs WHERE status='running'"#
+    )
+    .fetch_one(&state.pg_pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let pending: i64 = sqlx::query_scalar(
+        r#"SELECT COUNT(*)::bigint FROM jobs WHERE status='pending'"#
+    )
+    .fetch_one(&state.pg_pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let locked_datasets: i64 = sqlx::query_scalar(
+        r#"SELECT COUNT(*)::bigint FROM dataset_locks WHERE lease_until > NOW()"#
+    )
+    .fetch_one(&state.pg_pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // Hardcoded for single-instance orchestrator
+    let workers_active = 1_i64;
+    let max_concurrent = 2_i64; // Should match MAX_CONCURRENT in worker_loop
+
+    let capacity_pct = if max_concurrent <= 0 {
+        0
+    } else {
+        (running * 100 / max_concurrent).min(100)
+    };
+
+    Ok(Json(SchedulerMetrics {
+        running,
+        pending,
+        locked_datasets,
+        workers_active,
+        capacity_pct,
+    }))
+}
