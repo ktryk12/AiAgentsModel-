@@ -182,8 +182,15 @@ pub async fn get_scheduler_metrics(
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    // Hardcoded for single-instance orchestrator
-    let workers_active = 1_i64;
+    // Active workers (heartbeat in last 30s) - Phase 9
+    let workers_active: i64 = sqlx::query_scalar(
+        r#"SELECT COUNT(*)::bigint FROM workers WHERE last_heartbeat > NOW() - INTERVAL '30 seconds'"#
+    )
+    .fetch_one(&state.pg_pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // Hardcoded max concurrent (must match Orchestrator logic)
     let max_concurrent = 2_i64; 
 
     let capacity_pct = if max_concurrent <= 0 {

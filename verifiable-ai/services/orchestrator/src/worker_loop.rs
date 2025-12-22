@@ -32,9 +32,29 @@ fn quota(queue: &str) -> usize {
     }
 }
 
+// Stable hash for advisory locks
+fn queue_lock_key(queue: &str) -> i64 {
+    let mut h = blake3::Hasher::new();
+    h.update(queue.as_bytes());
+    let bytes = h.finalize();
+    // take first 8 bytes as i64 (little endian)
+    let b: [u8; 8] = bytes.as_bytes()[0..8].try_into().unwrap_or([0u8; 8]);
+    i64::from_le_bytes(b)
+}
+
 pub async fn run_worker_loop(state: SharedState) {
     let wid = worker_id();
-    info!(worker_id=%wid, "worker_loop: started (fair + quotas)");
+    info!(worker_id=%wid, "worker_loop: started (strict quotas + registry)");
+
+    // Register worker and start heartbeat
+    if let Err(e) = register_worker(&state.pg_pool, &wid, &wid).await {
+        error!("failed to register worker: {e:?}");
+    }
+    let pool_hb = state.pg_pool.clone();
+    let wid_hb = wid.clone();
+    tokio::spawn(async move {
+        run_worker_heartbeat(pool_hb, wid_hb).await;
+    });
 
     loop {
         // Reaper: fail jobs with too many attempts
@@ -42,7 +62,7 @@ pub async fn run_worker_loop(state: SharedState) {
             if n > 0 { warn!("reaper: failed {n} jobs due to max attempts"); }
         }
 
-        match claim_one_job_fair_quota(&state.pg_pool, &wid).await {
+        match claim_one_job_fair_quota_strict(&state.pg_pool, &wid).await {
             Ok(Some(job)) => {
                 // Success claim
                 let st = state.clone();
@@ -81,7 +101,7 @@ pub async fn run_aging_task(state: SharedState) {
         .execute(&state.pg_pool)
         .await;
 
-        match res {
+         match res {
             Ok(r) => {
                 let n = r.rows_affected();
                 if n > 0 {
@@ -89,6 +109,38 @@ pub async fn run_aging_task(state: SharedState) {
                 }
             }
             Err(e) => warn!("aging: failed: {e:?}"),
+        }
+    }
+}
+
+async fn register_worker(pool: &PgPool, id: &str, hostname: &str) -> Result<()> {
+    // Runtime-checked
+    sqlx::query(
+        r#"
+        INSERT INTO workers (id, hostname, last_heartbeat, started_at)
+        VALUES ($1, $2, NOW(), NOW())
+        ON CONFLICT (id) DO UPDATE
+          SET hostname = EXCLUDED.hostname,
+              last_heartbeat = NOW()
+        "#
+    )
+    .bind(id)
+    .bind(hostname)
+    .execute(pool)
+    .await?;
+    info!("worker registered: {id}");
+    Ok(())
+}
+
+async fn run_worker_heartbeat(pool: PgPool, id: String) {
+    loop {
+        sleep(HEARTBEAT_EVERY).await;
+        let res = sqlx::query(r#"UPDATE workers SET last_heartbeat = NOW() WHERE id = $1"#)
+            .bind(&id)
+            .execute(&pool)
+            .await;
+        if let Err(e) = res {
+            warn!("worker heartbeat failed: {e:?}");
         }
     }
 }
@@ -196,7 +248,7 @@ async fn try_acquire_dataset_lock(
     Ok(row.is_some())
 }
 
-// --- Fair Scheduling + Quota Logic ---
+// --- Fair Scheduling + Quota Logic (Strict) ---
 
 async fn fetch_candidates(pool: &PgPool) -> Result<Vec<JobRow>> {
     let rows: Vec<JobRow> = sqlx::query_as(
@@ -221,13 +273,14 @@ async fn fetch_candidates(pool: &PgPool) -> Result<Vec<JobRow>> {
     Ok(rows)
 }
 
-async fn try_claim_candidate(
+async fn try_claim_candidate_strict(
     pool: &PgPool,
     job: &JobRow,
     worker_id: &str,
 ) -> Result<Option<ClaimedJob>> {
     let mut tx = pool.begin().await?;
 
+    // 1. Acquire Logical Lock on Job
     let locked: Option<uuid::Uuid> = sqlx::query_scalar(
         r#"
         SELECT id
@@ -251,7 +304,29 @@ async fn try_claim_candidate(
         return Ok(None);
     }
 
-    // Dataset lock (if applicable)
+    // 2. Strict Quota Check via Advisory Lock + Count
+    let lock_key = queue_lock_key(&job.queue);
+    
+    // Explicitly cast lock key to i64 (postgres bigint)
+    sqlx::query(r#"SELECT pg_advisory_xact_lock($1)"#)
+        .bind(lock_key)
+        .execute(&mut *tx)
+        .await?;
+
+    let cap = quota(&job.queue) as i64;
+    let running_in_queue: i64 = sqlx::query_scalar(
+        r#"SELECT COUNT(*)::bigint FROM jobs WHERE queue = $1 AND status='running'"#
+    )
+    .bind(&job.queue)
+    .fetch_one(&mut *tx)
+    .await?;
+
+    if running_in_queue >= cap {
+         tx.rollback().await?;
+         return Ok(None);
+    }
+
+    // 3. Dataset lock (if applicable)
     if let Some(dataset_id) = extract_dataset_id(&job.payload) {
         let ok = try_acquire_dataset_lock(&mut tx, &dataset_id, job.id, LEASE_SECS).await?;
         if !ok {
@@ -260,7 +335,7 @@ async fn try_claim_candidate(
         }
     }
 
-    // Claim job
+    // 4. Claim job
     sqlx::query(
         r#"
         UPDATE jobs
@@ -290,10 +365,10 @@ async fn try_claim_candidate(
     }))
 }
 
-async fn claim_one_job_fair_quota(pool: &PgPool, wid: &str) -> Result<Option<ClaimedJob>> {
+async fn claim_one_job_fair_quota_strict(pool: &PgPool, wid: &str) -> Result<Option<ClaimedJob>> {
     let usage = get_usage(pool).await?;
 
-    // Check MAX TOTAL concurrency
+    // Check MAX TOTAL concurrency (Soft check is fine here, strict check inside tx is per-queue)
     if usage.total_running >= MAX_TOTAL {
         return Ok(None);
     }
@@ -301,16 +376,17 @@ async fn claim_one_job_fair_quota(pool: &PgPool, wid: &str) -> Result<Option<Cla
     let candidates = fetch_candidates(pool).await?;
 
     for job in candidates {
-        // Queue Quota Check
+        // Pre-check (Optimistic)
         let q = job.queue.as_str();
         let cap = quota(q);
         let used = usage.running_by_queue.get(q).copied().unwrap_or(0);
 
         if used >= cap {
-            continue; // queue full, scan next
+            continue; // optimistic skip
         }
 
-        if let Some(claimed) = try_claim_candidate(pool, &job, wid).await? {
+        // Strict Claim Attempt
+        if let Some(claimed) = try_claim_candidate_strict(pool, &job, wid).await? {
             return Ok(Some(claimed));
         }
     }
