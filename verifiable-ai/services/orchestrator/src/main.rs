@@ -100,7 +100,7 @@ async fn main() -> Result<()> {
         .route("/chat/completions", post(crate::routes_chat::chat_complete))
         .route("/training/datasets", post(crate::routes_training::post_dataset))
         .route("/training/datasets", get(crate::routes_training::get_datasets))
-        .route("/training/jobs", post(crate::routes_jobs::perform_create_job))
+        .route("/training/jobs", post(crate::routes_jobs::perform_create_job).get(crate::routes_jobs::get_jobs))
         .route("/training/jobs/:id", get(crate::routes_jobs::get_job))
         .layer(CorsLayer::permissive())
         .with_state(app_state);

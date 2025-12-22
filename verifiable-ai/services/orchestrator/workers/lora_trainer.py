@@ -10,10 +10,11 @@ def main():
     job_id = sys.argv[1] if len(sys.argv) >= 2 else "unknown"
     emit({"type":"start","worker":"lora_trainer","job_id":job_id})
 
-    # Simulated training progress
-    for i in range(1, 11):
+    # Simulated training progress (longer duration for crash testing)
+    for i in range(1, 61):
         time.sleep(1)
-        emit({"type":"progress","worker":"lora_trainer","job_id":job_id,"pct":i*10,"message":f"step {i}/10"})
+        if i % 10 == 0:
+            emit({"type":"progress","worker":"lora_trainer","job_id":job_id,"pct":int((i/60)*100),"message":f"step {i}/60"})
 
     emit({"type":"done","worker":"lora_trainer","job_id":job_id,"artifact":"simulated_adapter.safetensors"})
     return 0

@@ -84,3 +84,39 @@ pub async fn get_job(
         Err((StatusCode::NOT_FOUND, "Job not found".to_string()))
     }
 }
+
+#[derive(Serialize, sqlx::FromRow)]
+pub struct JobListRow {
+    pub id: Uuid,
+    pub kind: String,
+    pub status: String,
+    pub attempts: i32,
+    pub dataset_id: Option<String>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+pub async fn get_jobs(
+    State(state): State<SharedState>,
+) -> Result<Json<Vec<JobListRow>>, (StatusCode, String)> {
+    let rows: Vec<JobListRow> = sqlx::query_as(
+        r#"
+        SELECT
+            id,
+            kind,
+            status,
+            attempts,
+            payload->>'dataset_id' as dataset_id,
+            created_at,
+            updated_at
+        FROM jobs
+        ORDER BY created_at DESC
+        LIMIT 50
+        "#
+    )
+    .fetch_all(&state.pg_pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(rows))
+}
