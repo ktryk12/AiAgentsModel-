@@ -1,5 +1,4 @@
-pub mod types;
-mod worker;
+mod config;
 mod state;
 mod routes_models;
 mod vdb_exec;
@@ -34,8 +33,35 @@ use std::path::PathBuf;
 
 use modelops::{ModelFile, ModelRecord, ModelStatus, manifest_hash, put_model, add_model_to_index};
 
+use anyhow::{Context, Result};
+// use aws_config::BehaviorVersion;
+// use aws_sdk_s3::{config::Region, Client as S3Client};
+use sqlx::PgPool;
+use tracing::{info, warn};
+
+use crate::config::AppConfig;
+
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
+    dotenvy::dotenv().ok();
+
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
+
+    let cfg = AppConfig::from_env()?;
+
+    // --- Postgres ---
+    let pg_pool = PgPool::connect(&cfg.database_url)
+        .await
+        .context("Failed to connect to Postgres")?;
+
+    // --- S3 (MinIO) --- DEFERRED
+    // let s3 = build_s3_client(&cfg).await?;
+
+    // --- Startup health checks (fail fast) ---
+    startup_checks(&cfg, &pg_pool).await?;
+    
     let db_path = PathBuf::from("orchestrator_vdb.json");
     
     // Init provider & runtime
@@ -43,7 +69,7 @@ async fn main() {
     let runtime = crate::runtime::ModelRuntimeManager::new(Box::new(provider));
     let runtime_arc = Arc::new(Mutex::new(runtime));
 
-    let app_state = Arc::new(AppState::new(db_path, runtime_arc));
+    let app_state = Arc::new(AppState::new(db_path, runtime_arc, cfg.clone(), pg_pool));
 
     // Spawn background reloader
     tokio::spawn(crate::runtime_reload::reload_from_vdb(app_state.clone()));
@@ -68,11 +94,57 @@ async fn main() {
         .layer(CorsLayer::permissive())
         .with_state(app_state);
 
-    let addr = "0.0.0.0:8080";
+    let addr = &cfg.bind_addr;
     println!("orchestrator listening on http://{addr}");
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
+    
+    Ok(())
 }
+
+
+async fn startup_checks(cfg: &AppConfig, pg_pool: &PgPool) -> Result<()> {
+    check_comfyui(&cfg.comfyui_url).await?;
+    info!("comfyui: ok (8188)");
+
+    check_minio_http(&cfg.s3_endpoint).await?;
+    info!("minio: ok (http health)");
+
+    check_postgres(pg_pool).await?;
+    info!("postgres: ok");
+
+    Ok(())
+}
+
+async fn check_minio_http(base: &str) -> Result<()> {
+    let url = format!("{}/minio/health/live", base.trim_end_matches('/'));
+    let resp = reqwest::get(&url).await.context("MinIO health request failed")?;
+    if resp.status() != StatusCode::OK {
+        anyhow::bail!("MinIO unhealthy: HTTP {}", resp.status());
+    }
+    Ok(())
+}
+
+async fn check_comfyui(base: &str) -> Result<()> {
+    // ComfyUI has multiple endpoints; "/system_stats" is common.
+    let url = format!("{}/system_stats", base.trim_end_matches('/'));
+    let resp = reqwest::get(&url).await.context("ComfyUI request failed")?;
+
+    if resp.status() != StatusCode::OK {
+        anyhow::bail!("ComfyUI unhealthy: HTTP {}", resp.status());
+    }
+    Ok(())
+}
+
+async fn check_postgres(pg_pool: &PgPool) -> Result<()> {
+    sqlx::query("SELECT 1")
+        .execute(pg_pool)
+        .await
+        .context("Postgres ping failed")?;
+    Ok(())
+}
+
+
 
 async fn download_model(
     State(st): State<SharedState>,

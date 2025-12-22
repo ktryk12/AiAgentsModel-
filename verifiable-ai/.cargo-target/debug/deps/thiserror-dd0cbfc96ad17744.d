@@ -1,0 +1,14 @@
+e:\repos\AiAgentsModel-\verifiable-ai\.cargo-target\debug\deps\thiserror-dd0cbfc96ad17744.d: C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\lib.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\aserror.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\display.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\var.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\private.rs e:\repos\AiAgentsModel-\verifiable-ai\.cargo-target\debug\build\thiserror-2c452c1fc7ec2e06\out/private.rs
+
+e:\repos\AiAgentsModel-\verifiable-ai\.cargo-target\debug\deps\libthiserror-dd0cbfc96ad17744.rlib: C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\lib.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\aserror.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\display.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\var.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\private.rs e:\repos\AiAgentsModel-\verifiable-ai\.cargo-target\debug\build\thiserror-2c452c1fc7ec2e06\out/private.rs
+
+e:\repos\AiAgentsModel-\verifiable-ai\.cargo-target\debug\deps\libthiserror-dd0cbfc96ad17744.rmeta: C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\lib.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\aserror.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\display.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\var.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\private.rs e:\repos\AiAgentsModel-\verifiable-ai\.cargo-target\debug\build\thiserror-2c452c1fc7ec2e06\out/private.rs
+
+C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\lib.rs:
+C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\aserror.rs:
+C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\display.rs:
+C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\var.rs:
+C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\private.rs:
+e:\repos\AiAgentsModel-\verifiable-ai\.cargo-target\debug\build\thiserror-2c452c1fc7ec2e06\out/private.rs:
+
+# env-dep:OUT_DIR=e:\\repos\\AiAgentsModel-\\verifiable-ai\\.cargo-target\\debug\\build\\thiserror-2c452c1fc7ec2e06\\out

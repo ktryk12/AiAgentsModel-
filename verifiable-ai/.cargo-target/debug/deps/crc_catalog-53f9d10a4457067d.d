@@ -1,0 +1,9 @@
+e:\repos\AiAgentsModel-\verifiable-ai\.cargo-target\debug\deps\crc_catalog-53f9d10a4457067d.d: C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-catalog-2.4.0\src\lib.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-catalog-2.4.0\src\poly.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-catalog-2.4.0\src\algorithm.rs
+
+e:\repos\AiAgentsModel-\verifiable-ai\.cargo-target\debug\deps\libcrc_catalog-53f9d10a4457067d.rlib: C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-catalog-2.4.0\src\lib.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-catalog-2.4.0\src\poly.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-catalog-2.4.0\src\algorithm.rs
+
+e:\repos\AiAgentsModel-\verifiable-ai\.cargo-target\debug\deps\libcrc_catalog-53f9d10a4457067d.rmeta: C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-catalog-2.4.0\src\lib.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-catalog-2.4.0\src\poly.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-catalog-2.4.0\src\algorithm.rs
+
+C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-catalog-2.4.0\src\lib.rs:
+C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-catalog-2.4.0\src\poly.rs:
+C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-catalog-2.4.0\src\algorithm.rs:

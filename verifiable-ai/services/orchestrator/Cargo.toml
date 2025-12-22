@@ -4,6 +4,20 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+# env
+dotenvy = "0.15"
+
+# http (for ComfyUI health check)
+reqwest = { version = "0.12", features = ["json", "default-tls"] }
+
+# postgres
+sqlx = { version = "0.8", features = ["runtime-tokio-native-tls", "postgres", "macros", "uuid", "chrono"] }
+
+# aws/minio (S3) - deferred due to build issues
+# aws-config = ...
+# aws-sdk-s3 = ...
+
+# already present
 axum = { workspace = true, features = ["multipart"] }
 tokio = { workspace = true }
 serde = { workspace = true }
@@ -16,7 +30,8 @@ blake3 = { workspace = true }
 bytes = "1"
 anyhow = "1"
 async-trait = "0.1"
-reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 vdb = { path = "../../crates/vdb" }
 modelops = { path = "../../crates/modelops" }

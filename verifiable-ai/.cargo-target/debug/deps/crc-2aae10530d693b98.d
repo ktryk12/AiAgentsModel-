@@ -1,0 +1,12 @@
+e:\repos\AiAgentsModel-\verifiable-ai\.cargo-target\debug\deps\crc-2aae10530d693b98.d: C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\lib.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\crc128.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\crc16.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\crc32.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\crc64.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\crc8.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\table.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\util.rs
+
+e:\repos\AiAgentsModel-\verifiable-ai\.cargo-target\debug\deps\libcrc-2aae10530d693b98.rmeta: C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\lib.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\crc128.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\crc16.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\crc32.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\crc64.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\crc8.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\table.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\util.rs
+
+C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\lib.rs:
+C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\crc128.rs:
+C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\crc16.rs:
+C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\crc32.rs:
+C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\crc64.rs:
+C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\crc8.rs:
+C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\table.rs:
+C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\crc-3.4.0\src\util.rs:

@@ -1,0 +1,6 @@
+e:\repos\AiAgentsModel-\verifiable-ai\.cargo-target\debug\deps\yoke_derive-b464dcdff58168b0.d: C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\yoke-derive-0.8.1\src\lib.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\yoke-derive-0.8.1\src\visitor.rs
+
+e:\repos\AiAgentsModel-\verifiable-ai\.cargo-target\debug\deps\yoke_derive-b464dcdff58168b0.dll: C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\yoke-derive-0.8.1\src\lib.rs C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\yoke-derive-0.8.1\src\visitor.rs
+
+C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\yoke-derive-0.8.1\src\lib.rs:
+C:\Users\Admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\yoke-derive-0.8.1\src\visitor.rs:

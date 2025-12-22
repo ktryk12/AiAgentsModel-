@@ -1,0 +1,12 @@
+e:\repos\AiAgentsModel-\verifiable-ai\.cargo-target\debug\deps\vdb-392ffa5afbdc411d.d: crates\vdb\src\lib.rs crates\vdb\src\smt.rs crates\vdb\src\storage.rs crates\vdb\src\types.rs crates\vdb\src\events.rs crates\vdb\src\crypto.rs crates\vdb\src\nodestore.rs crates\vdb\src\history.rs
+
+e:\repos\AiAgentsModel-\verifiable-ai\.cargo-target\debug\deps\libvdb-392ffa5afbdc411d.rmeta: crates\vdb\src\lib.rs crates\vdb\src\smt.rs crates\vdb\src\storage.rs crates\vdb\src\types.rs crates\vdb\src\events.rs crates\vdb\src\crypto.rs crates\vdb\src\nodestore.rs crates\vdb\src\history.rs
+
+crates\vdb\src\lib.rs:
+crates\vdb\src\smt.rs:
+crates\vdb\src\storage.rs:
+crates\vdb\src\types.rs:
+crates\vdb\src\events.rs:
+crates\vdb\src\crypto.rs:
+crates\vdb\src\nodestore.rs:
+crates\vdb\src\history.rs:
