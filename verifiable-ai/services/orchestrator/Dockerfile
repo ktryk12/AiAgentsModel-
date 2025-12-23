@@ -74,12 +74,14 @@ WORKDIR /app
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir huggingface_hub
+    pip install --no-cache-dir huggingface_hub requests psycopg2-binary pgvector
+
 
 COPY --from=builder /app/target/release/orchestrator /usr/local/bin/orchestrator
 
 # Worker scripts
 COPY services/orchestrator/workers /app/workers
+COPY services/orchestrator/defaults /app/defaults
 
 # Make workers executable
 RUN chmod +x /app/workers/*.py

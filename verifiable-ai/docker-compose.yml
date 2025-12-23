@@ -1,5 +1,4 @@
 
-
 networks:
   verifiable-net:
     driver: bridge
@@ -61,13 +60,13 @@ services:
       retries: 5
 
   postgres:
-    image: postgres:16
+    image: pgvector/pgvector:pg16
     container_name: verifiable-postgres
     restart: unless-stopped
 
     ports:
       - "5432:5432"
-
+    
     environment:
       POSTGRES_USER: verifiable
       POSTGRES_PASSWORD: verifiable
@@ -103,6 +102,27 @@ services:
       - verifiable-net
     restart: unless-stopped
 
+  packsmith:
+    build:
+      context: services/packsmith
+    container_name: verifiable-packsmith
+    ports:
+      - "8002:8000"
+    environment:
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER-"minioadmin"}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD-"minioadmin"}
+      - MINIO_BUCKET=verifiable-ai
+      - PACK_SIGNING_KEY=${PACK_SIGNING_KEY}
+    volumes:
+      - ./data/packsmith:/data
+    depends_on:
+      minio:
+        condition: service_started
+    networks:
+      - verifiable-net
+    restart: unless-stopped
+
   ui:
     build:
       context: ./services/ui
@@ -115,3 +135,42 @@ services:
     networks:
       - verifiable-net
     restart: unless-stopped
+
+  router-llm:
+    profiles: ["llm-router"]
+    image: ghcr.io/ggerganov/llama.cpp:server
+    ports: ["8108:8080"]
+    volumes:
+      - "E:/Llm/AI/models/ImSota/Phi-3-mini-4k-instruct_Waseda-Q8_0-GGUF:/models:ro"
+    command: >
+      --model /models/phi-3-mini-4k-instruct_waseda-q8_0.gguf
+      --ctx-size 4096 --threads 8 --host 0.0.0.0 --port 8080
+    networks: [verifiable-net]
+    restart: unless-stopped
+    healthcheck: { disable: true }
+
+  general-llm:
+    profiles: ["llm-general"]
+    image: ghcr.io/ggerganov/llama.cpp:server
+    ports: ["8109:8080"]
+    volumes:
+      - "E:/Llm/AI/models/tensorblock/openchat_3.5-GGUF:/models:ro"
+    command: >
+      --model /models/openchat_3.5-Q4_K_S.gguf
+      --ctx-size 4096 --threads 12 --host 0.0.0.0 --port 8080
+    networks: [verifiable-net]
+    restart: unless-stopped
+    healthcheck: { disable: true }
+
+  devops-llm:
+    profiles: ["llm-devops"]
+    image: ghcr.io/ggerganov/llama.cpp:server
+    ports: ["8101:8080"]
+    volumes:
+      - "E:/Llm/AI/models/lmstudio-community/Codestral-22B-v0.1-GGUF:/models:ro"
+    command: >
+      --model /models/Codestral-22B-v0.1-Q4_K_M.gguf
+      --ctx-size 8192 --threads 24 --host 0.0.0.0 --port 8080
+    networks: [verifiable-net]
+    restart: unless-stopped
+    healthcheck: { disable: true }

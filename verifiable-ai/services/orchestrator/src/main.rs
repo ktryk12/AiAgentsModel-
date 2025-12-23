@@ -72,6 +72,11 @@ async fn main() -> Result<()> {
     // --- Startup health checks (fail fast) ---
     startup_checks(&cfg, &pg_pool).await?;
     
+    // Phase 18: Ingest defaults (if needed)
+    if let Err(e) = schedule_default_ingestion(&pg_pool).await {
+         eprintln!("WARNING: Failed to schedule default ingestion: {e:?}");
+    }
+    
     let db_path = PathBuf::from("orchestrator_vdb.json");
     
     // Init provider & runtime
@@ -171,5 +176,42 @@ async fn check_postgres(pg_pool: &PgPool) -> Result<()> {
         .execute(pg_pool)
         .await
         .context("Postgres ping failed")?;
+    Ok(())
+}
+
+async fn schedule_default_ingestion(pool: &PgPool) -> Result<()> {
+    // Check if we have documents in 'system' collection
+    let count: i64 = match sqlx::query_scalar("SELECT COUNT(*) FROM documents WHERE collection='system'")
+        .fetch_one(pool)
+        .await 
+    {
+        Ok(c) => c,
+        Err(_) => 0, 
+    };
+
+    if count > 0 {
+        return Ok(()); // already ingested
+    }
+
+    info!("Ingesting default system knowledge...");
+    
+    // Create job
+    let job_id = Uuid::new_v4();
+    sqlx::query(
+        r#"
+        INSERT INTO jobs (id, kind, queue, payload, status, created_at, updated_at, priority)
+        VALUES ($1, 'kb.create', 'default', $2, 'pending', NOW(), NOW(), 10)
+        "#
+    )
+    .bind(job_id)
+    .bind(serde_json::json!({
+        "source_type": "files",
+        "source_path": "/app/defaults",
+        "index_name": "system"
+    }))
+    .execute(pool)
+    .await?;
+
+    info!("Scheduled default ingestion job: {job_id}");
     Ok(())
 }

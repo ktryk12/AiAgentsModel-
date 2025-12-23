@@ -128,8 +128,38 @@ async fn execute_job(state: SharedState, job: ClaimedJob, wid: String) -> Result
             if let Some(r) = revision { a.push(r.to_string()); }
             ("/app/workers/hf_downloader.py", a)
         }
-        "lora_train" => {
-            ("/app/workers/lora_trainer.py", vec![job.id.to_string()])
+        "kb.create" => {
+            let src_type = job.payload.get("source_type").and_then(|v| v.as_str()).unwrap_or("files");
+            let src_path = job.payload.get("source_path").and_then(|v| v.as_str()).unwrap_or("");
+            let idx_name = job.payload.get("index_name").and_then(|v| v.as_str()).unwrap_or("default");
+
+            let args = vec![
+                "--source-type".to_string(), src_type.to_string(),
+                "--source-path".to_string(), src_path.to_string(),
+                "--collection".to_string(), idx_name.to_string(),
+            ];
+            ("/app/workers/kb_worker.py", args)
+        }
+        "text_generation" => {
+            let prompt = job.payload.get("prompt").and_then(|v| v.as_str()).unwrap_or("");
+            let quality = job.payload.get("quality").and_then(|v| v.as_str()).unwrap_or("normal");
+            
+            // Map quality to URL
+            // Default/normal -> general-llm (8109->8080)
+            // Best -> devops-llm (8101->8080) - assuming devops is the 'stronger' model here or user intent
+            // Actually user might want routing. For now simple:
+            let url = if quality == "best" {
+                "http://devops-llm:8080/v1/chat/completions"
+            } else {
+                "http://general-llm:8080/v1/chat/completions"
+            };
+
+            let args = vec![
+                "--api-url".to_string(), url.to_string(),
+                "--prompt".to_string(), prompt.to_string(),
+                "--model".to_string(), "local".to_string(),
+            ];
+            ("/app/workers/text_generator.py", args)
         }
         other => {
             if let Some(ds_id) = extract_dataset_id(&job.payload) {

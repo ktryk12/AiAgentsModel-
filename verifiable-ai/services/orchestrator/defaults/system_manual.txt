@@ -1,0 +1,16 @@
+# Verifiable AI System Manual
+
+Welcome to your private AI system.
+This system is designed to be secure, private, and verifiable.
+
+## Key Principles
+1. **Trusted Sources**: Answers are grounded in documents you upload.
+2. **Local Execution**: Models run on your hardware, not in the cloud.
+3. **Verification**: Every action is logged and verifiable.
+
+## Capabilities
+- **Answer**: Ask questions about your documents.
+- **Write**: Generate emails or reports based on your style data.
+- **Generate**: Create code or images using local models.
+
+This document is part of the "System Knowledge" collection.
